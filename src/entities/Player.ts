@@ -16,6 +16,8 @@ export class Player {
   /** Last non-zero movement direction; used as fallback for spell targeting. */
   lastDirection = new THREE.Vector3(0, 0, 1)
 
+  alive = true
+
   speedMultiplier   = 1.0
   knockbackVelocity = new THREE.Vector3()
 

@@ -163,7 +163,7 @@ export class Enemy {
     }
   }
 
-  private shouldBlink(playerPos: THREE.Vector3, dist: number): boolean {
+  private shouldBlink(_playerPos: THREE.Vector3, dist: number): boolean {
     if (this.archetype === 'apprentice' && this.depth >= 5) {
       return this.hp / this.maxHp < 0.3
     }
