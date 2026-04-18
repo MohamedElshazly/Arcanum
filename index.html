@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Arcanum</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <div id="game-canvas"></div>
+
+    <div id="hud">
+      <div id="hud-topleft">
+        <div class="stat-bar-wrap">
+          <span class="bar-label">HP</span>
+          <div class="bar-track">
+            <div id="hp-fill" class="bar-fill hp"></div>
+          </div>
+        </div>
+        <div class="stat-bar-wrap">
+          <span class="bar-label">MP</span>
+          <div class="bar-track">
+            <div id="mana-fill" class="bar-fill mana"></div>
+          </div>
+        </div>
+      </div>
+
+      <div id="spell-bar">
+        <div class="spell-slot fire" id="slot-q">
+          <div class="slot-key">Q</div>
+          <div class="slot-name">Fireball</div>
+          <div class="slot-mana">20 MP</div>
+          <div class="cooldown-overlay" id="q-cooldown"></div>
+        </div>
+        <div class="spell-slot inactive">
+          <div class="slot-key">W</div>
+        </div>
+        <div class="spell-slot inactive">
+          <div class="slot-key">E</div>
+        </div>
+        <div class="spell-slot inactive">
+          <div class="slot-key">R</div>
+        </div>
+      </div>
+    </div>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

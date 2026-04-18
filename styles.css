@@ -1,0 +1,108 @@
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: #000;
+  overflow: hidden;
+  font-family: 'Courier New', monospace;
+}
+
+#game-canvas {
+  position: fixed;
+  inset: 0;
+}
+
+#game-canvas canvas {
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
+}
+
+#hud {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 10;
+}
+
+#hud-topleft {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.stat-bar-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.bar-label {
+  color: #ccc;
+  font-size: 12px;
+  width: 20px;
+}
+
+.bar-track {
+  width: 160px;
+  height: 12px;
+  background: #333;
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.bar-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.1s linear;
+}
+
+.bar-fill.hp   { background: #c0392b; }
+.bar-fill.mana { background: #2980b9; }
+
+#spell-bar {
+  position: absolute;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 8px;
+}
+
+.spell-slot {
+  position: relative;
+  width: 72px;
+  height: 80px;
+  border: 2px solid #555;
+  border-radius: 4px;
+  background: #111;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  overflow: hidden;
+}
+
+.spell-slot.fire     { border-color: #ff6600; }
+.spell-slot.inactive { opacity: 0.4; }
+
+.slot-key  { color: #fff;    font-size: 18px; font-weight: bold; }
+.slot-name { color: #ffaa66; font-size: 10px; text-align: center; }
+.slot-mana { color: #66aaff; font-size: 9px; }
+
+.cooldown-overlay {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 0;
+  background: rgba(0, 0, 0, 0.7);
+  transition: height 0.05s linear;
+}
