@@ -1,7 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import {
   generateDungeon, getNeighborRoom, OPPOSITE_DIR,
-  type DungeonData,
 } from '../src/dungeon/DungeonGenerator'
 
 describe('generateDungeon', () => {
