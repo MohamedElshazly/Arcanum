@@ -16,6 +16,9 @@ export class Player {
   /** Last non-zero movement direction; used as fallback for spell targeting. */
   lastDirection = new THREE.Vector3(0, 0, 1)
 
+  speedMultiplier   = 1.0
+  knockbackVelocity = new THREE.Vector3()
+
   constructor() {
     const geo  = new THREE.CylinderGeometry(PLAYER_RADIUS, PLAYER_RADIUS, 1.5, 16)
     const mat  = new THREE.MeshStandardMaterial({ color: 0xffffff })
@@ -25,6 +28,8 @@ export class Player {
   }
 
   update(delta: number, input: InputManager, bounds: RoomBounds): void {
+    this.speedMultiplier = 1.0
+
     const dir = new THREE.Vector3()
     if (input.isHeld('ArrowLeft'))  dir.x -= 1
     if (input.isHeld('ArrowRight')) dir.x += 1
@@ -34,11 +39,16 @@ export class Player {
     if (dir.lengthSq() > 0) {
       dir.normalize()
       this.lastDirection.copy(dir)
-      this.position.x += dir.x * PLAYER_SPEED * delta
-      this.position.z += dir.z * PLAYER_SPEED * delta
+      this.position.x += dir.x * PLAYER_SPEED * this.speedMultiplier * delta
+      this.position.z += dir.z * PLAYER_SPEED * this.speedMultiplier * delta
     }
 
-    // Clamp to interior room bounds
+    if (this.knockbackVelocity.lengthSq() > 0.001) {
+      this.position.x += this.knockbackVelocity.x * delta
+      this.position.z += this.knockbackVelocity.z * delta
+      this.knockbackVelocity.multiplyScalar(Math.max(0, 1 - 8 * delta))
+    }
+
     this.position.x = Math.max(bounds.minX + PLAYER_RADIUS, Math.min(bounds.maxX - PLAYER_RADIUS, this.position.x))
     this.position.z = Math.max(bounds.minZ + PLAYER_RADIUS, Math.min(bounds.maxZ - PLAYER_RADIUS, this.position.z))
 
