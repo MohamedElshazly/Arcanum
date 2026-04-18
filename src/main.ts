@@ -1,2 +1,4 @@
-// Entry point — wired up in Task 14
-console.log('Arcanum loading...')
+import { Game } from './core/Game'
+
+const game = new Game()
+game.start()
