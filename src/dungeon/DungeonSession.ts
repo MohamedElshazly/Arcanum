@@ -15,7 +15,7 @@ import {
 } from './DungeonGenerator'
 import type { Player }        from '../entities/Player'
 import type { SceneManager }  from '../core/SceneManager'
-import { PLAYER_RADIUS, ENEMY_HALF_X, ENEMY_HALF_Z } from '../constants'
+import { PLAYER_RADIUS } from '../constants'
 
 type TransitionState = 'idle' | 'fade-out' | 'fade-in'
 
@@ -209,7 +209,3 @@ export class DungeonSession {
   }
 }
 
-// Suppress unused-import warnings — ENEMY_HALF_X and ENEMY_HALF_Z are reserved
-// for future enemy-projectile vs enemy collision checks.
-void ENEMY_HALF_X
-void ENEMY_HALF_Z
