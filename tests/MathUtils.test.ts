@@ -5,8 +5,8 @@ describe('mulberry32', () => {
   it('same seed produces same sequence', () => {
     const a = mulberry32(42)
     const b = mulberry32(42)
-    expect(a()).toBeCloseTo(b())
-    expect(a()).toBeCloseTo(b())
+    expect(a()).toBe(b())
+    expect(a()).toBe(b())
   })
   it('different seeds produce different values', () => {
     expect(mulberry32(1)()).not.toBe(mulberry32(2)())
