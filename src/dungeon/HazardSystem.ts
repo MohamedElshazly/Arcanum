@@ -39,6 +39,7 @@ export class HazardSystem {
         case 'south': return new THREE.Vector3(0, 0,  h)
         case 'west':  return new THREE.Vector3(-h, 0, 0)
         case 'east':  return new THREE.Vector3( h, 0, 0)
+        default:      return new THREE.Vector3(0, 0, 0)
       }
     })
 
