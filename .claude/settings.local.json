@@ -15,7 +15,9 @@
       "Bash(git -C /Users/omni/repos/arcanum status)",
       "Bash(git -C /Users/omni/repos/arcanum diff .claude/settings.local.json)",
       "Bash(git -C /Users/omni/repos/arcanum add .claude/settings.local.json)",
-      "Bash(git -C /Users/omni/repos/arcanum commit -m \"chore: update Claude settings history\")"
+      "Bash(git -C /Users/omni/repos/arcanum commit -m \"chore: update Claude settings history\")",
+      "Bash(git -C /Users/omni/repos/arcanum log --oneline -3)",
+      "Bash(git -C /Users/omni/repos/arcanum commit -m \"chore: final Claude settings update\")"
     ]
   }
 }
