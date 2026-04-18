@@ -9,7 +9,13 @@
       "Bash(curl -s http://localhost:5173/)",
       "Bash(pkill -f \"npm run dev\")",
       "Bash(git add *)",
-      "Bash(git commit *)"
+      "Bash(git commit *)",
+      "Bash(git -C /Users/omni/repos/arcanum log --oneline -5)",
+      "Bash(curl -s http://localhost:5173/styles.css)",
+      "Bash(git -C /Users/omni/repos/arcanum status)",
+      "Bash(git -C /Users/omni/repos/arcanum diff .claude/settings.local.json)",
+      "Bash(git -C /Users/omni/repos/arcanum add .claude/settings.local.json)",
+      "Bash(git -C /Users/omni/repos/arcanum commit -m \"chore: update Claude settings history\")"
     ]
   }
 }
