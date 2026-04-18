@@ -1,12 +1,144 @@
 # Arcanum Phase 1 Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
-
 **Goal:** Build a playable Phase 1 of Arcanum — isometric Three.js room, arrow-key player, one enemy, Fireball spell, AABB collision, and a DOM HUD — all in Vite + TypeScript.
 
 **Architecture:** Game.ts runs a delta-time requestAnimationFrame loop and orchestrates all systems. Pure logic (collision, cooldowns, input state) lives in focused files and is unit-tested with Vitest. Rendering code (SceneManager, Room, Player, Enemy) is verified visually. All movement is in the XZ plane; Y is always fixed.
 
 **Tech Stack:** Vite 5, TypeScript 5 (strict), Three.js (npm, bundled types), Vitest + jsdom
+
+---
+
+## How to Execute This Plan (Fresh Claude Context)
+
+This plan is executed using **Subagent-Driven Development**. Start by invoking the skill:
+
+```
+Skill("superpowers:subagent-driven-development")
+```
+
+Then follow this loop for each of the 14 tasks below:
+
+### Per-Task Loop
+
+**Step A — Dispatch implementer subagent**
+
+```
+Agent(general-purpose):
+  description: "Implement Task N: [task name]"
+  prompt: |
+    You are implementing Task N: [task name]
+    Working directory: /Users/omni/repos/arcanum
+
+    ## Task Description
+    [paste full task text from this plan]
+
+    ## Context
+    [see scene-setting below]
+
+    ## Before You Begin
+    Ask questions about anything unclear before starting work.
+
+    ## Your Job
+    1. Implement exactly what the task specifies
+    2. Write tests (following TDD where the task requires it)
+    3. Verify implementation works
+    4. Commit your work
+    5. Self-review before reporting
+
+    ## Report Format
+    - Status: DONE | DONE_WITH_CONCERNS | BLOCKED | NEEDS_CONTEXT
+    - What you implemented
+    - Test results
+    - Files changed
+    - Self-review findings
+```
+
+**Scene-setting to include per task:**
+
+| Task | Context to include |
+|---|---|
+| 1 — Scaffold | Greenfield project. Repo already has git init and docs/ only. Use `npm create vite@latest . -- --template vanilla-ts` and answer yes when asked to overwrite. |
+| 2 — Constants | Task 1 complete. Vite+TS+Three.js scaffold in place. |
+| 3 — InputManager | Tasks 1–2 complete. `src/constants.ts` exists. This is a pure-logic file with full unit tests. |
+| 4 — SceneManager | Tasks 1–3 complete. Wire temporarily into `src/main.ts` for visual verification, then revert main.ts to stub (`console.log('Arcanum loading...')`). |
+| 5 — Room | Tasks 1–4 complete. Wire temporarily into main.ts for visual verification, then revert. |
+| 6 — Player | Tasks 1–5 complete. Wire temporarily into main.ts with SceneManager + InputManager + Room for visual verification, then revert. |
+| 7 — Enemy | Tasks 1–6 complete. Wire temporarily with Player for visual verification, then revert. |
+| 8 — SpellDefinitions | Tasks 1–7 complete. Pure data file, no tests needed. |
+| 9 — CollisionUtils | Tasks 1–8 complete. Pure functions, full unit tests. No Three.js in this file. |
+| 10 — Projectile | Tasks 1–9 complete. Uses `FIREBALL_RADIUS` from constants and `isOutOfBounds` from CollisionUtils. |
+| 11 — SpellCaster | Tasks 1–10 complete. Full unit tests using a mock scene (`{ add: () => {}, remove: () => {} } as unknown as THREE.Scene`). |
+| 12 — HUD | Tasks 1–11 complete. Queries DOM elements defined in `index.html` — do not create new DOM structure, only query existing IDs: `hp-fill`, `mana-fill`, `q-cooldown`. |
+| 13 — Game | Tasks 1–12 complete. This is the integration task — wires all files together. No new logic, only orchestration. Uses `ENEMY_HALF_X` and `ENEMY_HALF_Z` from constants for collision. |
+| 14 — Entry + Smoke | Tasks 1–13 complete. Replace `src/main.ts` stub, run `npm test`, start dev server, verify all 9 success criteria. |
+
+**Step B — After implementer reports DONE, dispatch spec reviewer**
+
+```
+Agent(general-purpose):
+  description: "Spec review Task N: [task name]"
+  prompt: |
+    You are reviewing whether an implementation matches its specification.
+    Working directory: /Users/omni/repos/arcanum
+
+    ## What Was Requested
+    [paste full task text from this plan]
+
+    ## What the Implementer Claims They Built
+    [paste implementer's report]
+
+    ## CRITICAL: Do Not Trust the Report
+    Read the actual code. Compare implementation to requirements line by line.
+    Check for missing pieces and extra features.
+
+    Report:
+    - ✅ Spec compliant — if everything matches after code inspection
+    - ❌ Issues: [list specifically what's missing or extra, with file:line references]
+```
+
+If spec reviewer finds issues: dispatch implementer again with specific fixes, then re-review.
+
+**Step C — After spec review passes, dispatch code quality reviewer**
+
+```
+Agent(superpowers:code-reviewer):
+  WHAT_WAS_IMPLEMENTED: [from implementer report]
+  PLAN_OR_REQUIREMENTS: Task N from docs/superpowers/plans/2026-04-18-arcanum-phase1.md
+  BASE_SHA: [commit SHA before this task]
+  HEAD_SHA: [current HEAD SHA]
+  DESCRIPTION: [task name and one-line summary]
+```
+
+Get SHAs with: `git log --oneline -5`
+
+If quality reviewer finds issues: dispatch implementer to fix, then re-review.
+
+**Step D — Mark task complete in TodoWrite, move to next task.**
+
+### Model Selection
+
+| Task | Model |
+|---|---|
+| 1 — Scaffold | `haiku` — mechanical CLI commands |
+| 2 — Constants | `haiku` — pure data entry |
+| 3 — InputManager | `haiku` — isolated logic + tests |
+| 4 — SceneManager | `sonnet` — Three.js setup with visual check |
+| 5 — Room | `sonnet` — Three.js geometry |
+| 6 — Player | `sonnet` — Three.js + movement logic |
+| 7 — Enemy | `haiku` — simple AI, similar to Player |
+| 8 — SpellDefinitions | `haiku` — pure data |
+| 9 — CollisionUtils | `haiku` — pure math + tests |
+| 10 — Projectile | `haiku` — similar to Enemy |
+| 11 — SpellCaster | `sonnet` — integration logic + tests |
+| 12 — HUD | `haiku` — DOM manipulation only |
+| 13 — Game | `sonnet` — integration, orchestration |
+| 14 — Entry + Smoke | `sonnet` — verification across all criteria |
+| Spec reviewers | `sonnet` |
+| Quality reviewers | `opus` (default code-reviewer) |
+
+### After All 14 Tasks
+
+Invoke `Skill("superpowers:finishing-a-development-branch")` to complete the branch.
 
 ---
 
