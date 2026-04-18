@@ -19,8 +19,6 @@ export class Room {
 
   private meshes: THREE.Object3D[] = []
   private doorMeshes  = new Map<Direction, THREE.Mesh>()
-  private doorArrows  = new Map<Direction, THREE.Mesh>()
-  private questionMarks = new Map<Direction, THREE.Mesh>()
 
   constructor(
     private readonly data: RoomData,
@@ -56,8 +54,6 @@ export class Room {
     }
     this.meshes = []
     this.doorMeshes.clear()
-    this.doorArrows.clear()
-    this.questionMarks.clear()
   }
 
   /** Call when player clears the room — open all doors. */
@@ -92,6 +88,8 @@ export class Room {
       if (open) {
         scene.remove(door)
         this.meshes = this.meshes.filter(m => m !== door)
+        door.geometry.dispose()
+        ;(door.material as THREE.Material).dispose()
       }
     }
   }
