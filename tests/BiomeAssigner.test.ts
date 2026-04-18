@@ -20,7 +20,7 @@ describe('assignBiomes', () => {
   })
   it('depth 1–2 rooms have 0 hazardCount', () => {
     for (const r of build(42).rooms)
-      if (r.depth <= 2 && r.type !== 'boss') expect(r.hazardCount).toBe(0)
+      if (r.depth <= 2 && r.type !== 'boss' && r.type !== 'elite') expect(r.hazardCount).toBe(0)
   })
   it('elite rooms always have hazardCount 3', () => {
     for (const r of build(42).rooms)

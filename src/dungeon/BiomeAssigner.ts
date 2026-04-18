@@ -128,7 +128,7 @@ export function assignBiomes(dungeon: DungeonData, rng: () => number): void {
     if (room.type === 'start' || room.type === 'rest' || room.type === 'boss') {
       room.enemies = []; continue
     }
-    const el: SpellElement = room.biome === 'stone' ? dominant : dominant
+    const el: SpellElement = room.biome === 'stone' ? dominant : (room.biome as SpellElement)
     room.enemies = generateEnemies(room, el, rng)
   }
 }
