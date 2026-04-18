@@ -2,9 +2,10 @@ import * as THREE from 'three'
 import { VIEW_WIDTH } from '../constants'
 
 export class SceneManager {
-  readonly scene    = new THREE.Scene()
-  readonly renderer = new THREE.WebGLRenderer({ antialias: true })
-  readonly camera:  THREE.OrthographicCamera
+  readonly scene       = new THREE.Scene()
+  readonly renderer    = new THREE.WebGLRenderer({ antialias: true })
+  readonly camera:     THREE.OrthographicCamera
+  readonly ambientLight = new THREE.AmbientLight(0xffffff, 0.6)
 
   constructor() {
     this.renderer.setSize(window.innerWidth, window.innerHeight)
@@ -20,16 +21,26 @@ export class SceneManager {
     this.camera.position.set(0, 20, 14)
     this.camera.lookAt(0, 0, 0)
 
-    const ambient     = new THREE.AmbientLight(0xffffff, 0.6)
     const directional = new THREE.DirectionalLight(0xfff5e0, 0.8)
     directional.position.set(-10, 20, 10)
-    this.scene.add(ambient, directional)
+    this.scene.add(this.ambientLight, directional)
 
     window.addEventListener('resize', this.onResize)
   }
 
   render(): void {
     this.renderer.render(this.scene, this.camera)
+  }
+
+  followPlayer(playerPos: THREE.Vector3, _delta: number): void {
+    const target = playerPos.clone().add(new THREE.Vector3(0, 20, 14))
+    this.camera.position.lerp(target, 0.08)
+    this.camera.lookAt(playerPos)
+  }
+
+  snapToRoom(center: THREE.Vector3): void {
+    this.camera.position.copy(center.clone().add(new THREE.Vector3(0, 20, 14)))
+    this.camera.lookAt(center)
   }
 
   private onResize = (): void => {

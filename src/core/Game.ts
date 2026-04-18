@@ -1,13 +1,12 @@
 import * as THREE        from 'three'
 import { SceneManager }  from './SceneManager'
 import { InputManager }  from './InputManager'
-import { Room }          from '../dungeon/Room'
 import { Player }        from '../entities/Player'
-import { Enemy }         from '../entities/Enemy'
 import { Projectile }    from '../entities/Projectile'
 import { SpellCaster }   from '../spells/SpellCaster'
 import { SpellBar }      from '../spells/SpellBar'
 import { HUD }           from '../ui/HUD'
+import { DungeonSession } from '../dungeon/DungeonSession'
 import {
   IEffect,
   castBlink,
@@ -26,45 +25,41 @@ import {
   ENEMY_HALF_Z,
 } from '../constants'
 import { SPELLS } from '../spells/SpellDefinitions'
+import type { Enemy } from '../entities/Enemy'
 
 const SLOT_KEYS = ['KeyQ', 'KeyW', 'KeyE', 'KeyR'] as const
 
 export class Game {
-  private sceneManager: SceneManager
-  private inputManager: InputManager
-  private room:         Room
-  private player:       Player
-  private enemies:      Enemy[]
-  private spellCaster:  SpellCaster
-  private spellBar:     SpellBar
-  private hud:          HUD
-  private projectiles:  Projectile[]  = []
-  private activeEffects: IEffect[]    = []
-  private clock = new THREE.Clock()
+  private sceneManager:  SceneManager
+  private inputManager:  InputManager
+  private session:       DungeonSession
+  private player:        Player
+  private spellCaster:   SpellCaster
+  private spellBar:      SpellBar
+  private hud:           HUD
+  private projectiles:   Projectile[]  = []
+  private activeEffects: IEffect[]     = []
+  private clock          = new THREE.Clock()
 
-  // Mouse-to-world projection
-  private mouseWorld   = new THREE.Vector3()
-  private floorPlane   = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0)
+  private mouseWorld     = new THREE.Vector3()
+  private floorPlane     = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0)
   private mouseRaycaster = new THREE.Raycaster()
-  private mouseNDC     = new THREE.Vector2()
+  private mouseNDC       = new THREE.Vector2()
 
   constructor() {
     this.sceneManager = new SceneManager()
     this.inputManager = new InputManager()
-    this.room         = new Room()
     this.player       = new Player()
-    this.enemies      = [new Enemy(5, 5), new Enemy(-4, 3), new Enemy(2, -4)]
     this.spellCaster  = new SpellCaster(this.player)
     this.spellBar     = new SpellBar()
     this.hud          = new HUD()
+    this.session      = new DungeonSession()
   }
 
   start(): void {
-    this.room.build(this.sceneManager.scene)
+    const seed = Math.floor(Math.random() * 0xFFFFFF)
+    this.session.init(this.sceneManager.scene, this.sceneManager, seed)
     this.sceneManager.scene.add(this.player.mesh)
-    for (const enemy of this.enemies) {
-      this.sceneManager.scene.add(enemy.mesh)
-    }
     this.hud.init()
     this.clock.start()
     requestAnimationFrame(this.loop)
@@ -77,7 +72,8 @@ export class Game {
     const currentTime = this.clock.getElapsedTime()
 
     this.inputManager.update()
-    this.player.update(delta, this.inputManager, this.room.bounds)
+
+    this.player.update(delta, this.inputManager, this.session.activeRoomBounds)
 
     // Project mouse NDC → world floor position
     this.mouseNDC.set(this.inputManager.mouseX, this.inputManager.mouseY)
@@ -100,9 +96,7 @@ export class Game {
       }
     }
 
-    for (const enemy of this.enemies) {
-      enemy.update(delta, this.player.position)
-    }
+    this.session.update(delta, this.player, this.sceneManager.scene)
 
     // Update homing targets for arcane_missile
     for (const proj of this.projectiles) {
@@ -112,19 +106,29 @@ export class Game {
       }
     }
 
+    const bounds = this.session.activeRoomBounds
     for (const proj of this.projectiles) {
-      proj.update(delta, this.room.bounds, this.sceneManager.scene)
+      proj.update(delta, bounds, this.sceneManager.scene)
     }
 
     this.checkProjectileCollisions(currentTime)
     this.projectiles = this.projectiles.filter(p => p.alive)
 
     for (const effect of this.activeEffects) {
-      effect.update(delta, this.sceneManager.scene, this.enemies)
+      effect.update(delta, this.sceneManager.scene, this.session.activeEnemies)
     }
     this.activeEffects = this.activeEffects.filter(e => e.alive)
 
-    this.hud.update(this.player, this.spellCaster, this.spellBar, currentTime)
+    this.sceneManager.followPlayer(this.player.position, delta)
+
+    this.hud.update(
+      this.player,
+      this.spellCaster,
+      this.spellBar,
+      currentTime,
+      this.session.dungeonData,
+      this.session.currentRoomData?.id,
+    )
     this.sceneManager.render()
   }
 
@@ -143,11 +147,10 @@ export class Game {
       mouseDir.normalize()
     }
 
-    const aliveEnemies = this.enemies.filter(e => e.alive)
     const result = this.spellCaster.cast(
       spell,
       this.player,
-      aliveEnemies,
+      [],
       this.sceneManager.scene,
       currentTime,
       mouseDir,
@@ -178,7 +181,7 @@ export class Game {
   private handleSpecialSpell(spellId: string, direction: THREE.Vector3): void {
     const scene   = this.sceneManager.scene
     const pos     = this.player.position.clone()
-    const enemies = this.enemies.filter(e => e.alive)
+    const enemies = this.session.activeEnemies.filter(e => e.alive)
 
     switch (spellId) {
       case 'blink':
@@ -224,11 +227,13 @@ export class Game {
     }
   }
 
-  private checkProjectileCollisions(currentTime: number): void {
+  private checkProjectileCollisions(_currentTime: number): void {
+    const enemies: Enemy[] = this.session.activeEnemies
+
     for (const proj of this.projectiles) {
       if (!proj.alive) continue
 
-      for (const enemy of this.enemies) {
+      for (const enemy of enemies) {
         if (!enemy.alive) continue
 
         const projRadius = Math.max(
@@ -251,7 +256,7 @@ export class Game {
         if (proj.spell.radius && proj.spell.radius > 0) {
           const r2 = proj.spell.radius * proj.spell.radius
           const impactPos = proj.mesh.position.clone()
-          for (const other of this.enemies) {
+          for (const other of enemies) {
             if (!other.alive) continue
             const dx = other.position.x - impactPos.x
             const dz = other.position.z - impactPos.z
@@ -272,7 +277,7 @@ export class Game {
 
         // Chain lightning: jump to next enemy
         if (proj.spell.id === 'chain_lightning' && proj.jumpsRemaining > 0) {
-          const nextTarget = this.findChainTarget(enemy, this.enemies)
+          const nextTarget = this.findChainTarget(enemy, enemies)
           if (nextTarget) {
             const from = proj.mesh.position.clone()
             const to   = nextTarget.position.clone()
@@ -318,7 +323,7 @@ export class Game {
   private nearestAliveEnemy(from: THREE.Vector3): Enemy | null {
     let nearest: Enemy | null = null
     let minDist = Infinity
-    for (const e of this.enemies) {
+    for (const e of this.session.activeEnemies) {
       if (!e.alive) continue
       const d = from.distanceTo(e.position)
       if (d < minDist) { minDist = d; nearest = e }

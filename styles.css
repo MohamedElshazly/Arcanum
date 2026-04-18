@@ -162,3 +162,47 @@ body {
   100% { color: #ccc; text-shadow: none; }
 }
 .pulse { animation: indicator-pulse 0.5s ease forwards; }
+
+#fade-overlay {
+  position: fixed;
+  inset: 0;
+  background: black;
+  opacity: 0;
+  pointer-events: none;
+  z-index: 50;
+}
+
+#minimap {
+  position: fixed;
+  top: 10px;
+  right: 10px;
+  background: rgba(0,0,0,0.7);
+  border: 1px solid #444;
+  image-rendering: pixelated;
+  z-index: 20;
+}
+
+#biome-desc {
+  position: fixed;
+  bottom: 120px;
+  left: 50%;
+  transform: translateX(-50%);
+  color: #cccccc;
+  font-size: 14px;
+  font-style: italic;
+  opacity: 0;
+  pointer-events: none;
+  z-index: 20;
+  text-shadow: 0 0 8px #000;
+}
+
+#biome-desc.fade-desc {
+  animation: biome-fade 3s ease forwards;
+}
+
+@keyframes biome-fade {
+  0%   { opacity: 0; }
+  15%  { opacity: 1; }
+  70%  { opacity: 1; }
+  100% { opacity: 0; }
+}
