@@ -1,6 +1,7 @@
-import type { Player }     from '../entities/Player'
-import type { SpellCaster } from '../spells/SpellCaster'
-import type { SpellBar }    from '../spells/SpellBar'
+import type { Player }       from '../entities/Player'
+import type { SpellCaster }  from '../spells/SpellCaster'
+import type { SpellBar }     from '../spells/SpellBar'
+import type { DungeonData }  from '../dungeon/DungeonGenerator'
 
 export class HUD {
   private hpFill!:       HTMLElement
@@ -44,7 +45,7 @@ export class HUD {
     caster: SpellCaster,
     spellBar: SpellBar,
     currentTime: number,
-    dungeonData?: import('../dungeon/DungeonGenerator').DungeonData,
+    dungeonData?: DungeonData,
     currentRoomId?: string,
   ): void {
     this.hpFill.style.width   = `${(player.hp   / player.maxHp)   * 100}%`
@@ -114,7 +115,7 @@ export class HUD {
   }
 
   private drawMinimap(
-    dungeon: import('../dungeon/DungeonGenerator').DungeonData,
+    dungeon: DungeonData,
     currentRoomId: string,
   ): void {
     const ctx   = this.minimapCtx
@@ -122,7 +123,7 @@ export class HUD {
     const PAD   = 2
     const GRID  = CELL + PAD
 
-    ctx.clearRect(0, 0, 150, 150)
+    ctx.clearRect(0, 0, this.minimapCanvas.width, this.minimapCanvas.height)
 
     ctx.strokeStyle = '#555'
     ctx.lineWidth   = 1
