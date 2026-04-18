@@ -8,7 +8,7 @@ import { Projectile }   from '../entities/Projectile'
 import { SpellCaster }  from '../spells/SpellCaster'
 import { HUD }          from '../ui/HUD'
 import { circleVsRect } from '../utils/CollisionUtils'
-import { DELTA_CAP, ENEMY_HALF_X, ENEMY_HALF_Z } from '../constants'
+import { DELTA_CAP, ENEMY_HALF_X, ENEMY_HALF_Z, FIREBALL_RADIUS } from '../constants'
 
 export class Game {
   private sceneManager: SceneManager
@@ -99,7 +99,7 @@ export class Game {
         if (!enemy.alive) continue
         const hit = circleVsRect(
           proj.mesh.position.x, proj.mesh.position.z,
-          proj.damage > 0 ? 0.2 : 0,   // projectile radius (FIREBALL_RADIUS)
+          FIREBALL_RADIUS,
           enemy.position.x - ENEMY_HALF_X,
           enemy.position.x + ENEMY_HALF_X,
           enemy.position.z - ENEMY_HALF_Z,
