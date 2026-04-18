@@ -12,15 +12,15 @@ describe('InputManager', () => {
     input.dispose()
   })
 
-  it('reports isHeld true while a key is held down', () => {
-    window.dispatchEvent(new KeyboardEvent('keydown', { code: 'ArrowUp', bubbles: true }))
+  it('WASD maps to Arrow codes — W reports as ArrowUp', () => {
+    window.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyW', bubbles: true }))
     expect(input.isHeld('ArrowUp')).toBe(true)
-    window.dispatchEvent(new KeyboardEvent('keyup', { code: 'ArrowUp', bubbles: true }))
+    window.dispatchEvent(new KeyboardEvent('keyup', { code: 'KeyW', bubbles: true }))
     expect(input.isHeld('ArrowUp')).toBe(false)
   })
 
-  it('isJustPressed is false before update(), true after, false the next frame', () => {
-    window.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyQ', bubbles: true }))
+  it('Digit1 maps to KeyQ — isJustPressed after update()', () => {
+    window.dispatchEvent(new KeyboardEvent('keydown', { code: 'Digit1', bubbles: true }))
     expect(input.isJustPressed('KeyQ')).toBe(false) // not yet promoted
     input.update()
     expect(input.isJustPressed('KeyQ')).toBe(true)
@@ -29,20 +29,38 @@ describe('InputManager', () => {
   })
 
   it('does not double-register justPressed on key repeat events', () => {
-    window.dispatchEvent(new KeyboardEvent('keydown', { code: 'ArrowLeft', bubbles: true }))
-    window.dispatchEvent(new KeyboardEvent('keydown', { code: 'ArrowLeft', bubbles: true })) // repeat
+    window.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyA', bubbles: true }))
+    window.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyA', bubbles: true })) // repeat
     input.update()
     expect(input.isHeld('ArrowLeft')).toBe(true)
     expect(input.isJustPressed('ArrowLeft')).toBe(true)
   })
 
   it('reports isJustReleased on the frame after keyup', () => {
-    window.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyQ', bubbles: true }))
+    window.dispatchEvent(new KeyboardEvent('keydown', { code: 'Digit1', bubbles: true }))
     input.update()
-    window.dispatchEvent(new KeyboardEvent('keyup', { code: 'KeyQ', bubbles: true }))
+    window.dispatchEvent(new KeyboardEvent('keyup', { code: 'Digit1', bubbles: true }))
     input.update()
     expect(input.isJustReleased('KeyQ')).toBe(true)
     input.update()
     expect(input.isJustReleased('KeyQ')).toBe(false)
+  })
+
+  it('raw arrow keys are ignored', () => {
+    window.dispatchEvent(new KeyboardEvent('keydown', { code: 'ArrowUp', bubbles: true }))
+    input.update()
+    expect(input.isHeld('ArrowUp')).toBe(false)
+  })
+
+  it('raw Q/W/E/R keys are ignored', () => {
+    window.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyQ', bubbles: true }))
+    input.update()
+    expect(input.isJustPressed('KeyQ')).toBe(false)
+  })
+
+  it('Tab still registers normally', () => {
+    window.dispatchEvent(new KeyboardEvent('keydown', { code: 'Tab', bubbles: true }))
+    input.update()
+    expect(input.isJustPressed('Tab')).toBe(true)
   })
 })
