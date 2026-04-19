@@ -8,10 +8,10 @@ import { SpellBar }      from '../spells/SpellBar'
 import { HUD }           from '../ui/HUD'
 import { DungeonSession } from '../dungeon/DungeonSession'
 import { LoadoutScreen } from '../ui/LoadoutScreen'
-import { CollectedBooksBar } from '../ui/CollectedBooksBar'
-import { DroppedBookUI }    from '../ui/DroppedBookUI'
+
 import { EvolutionOverlay } from '../ui/EvolutionOverlay'
 import { RunSummaryScreen } from '../ui/RunSummaryScreen'
+import { Spellbook }       from '../ui/Spellbook'
 import { PlayerInventory }  from '../progression/PlayerInventory'
 import { MasterySystem }    from '../progression/MasterySystem'
 import { Grimoire }         from '../progression/Grimoire'
@@ -65,8 +65,6 @@ export class Game {
   private loadoutScreen:    LoadoutScreen | null = null
   private runSummaryScreen: RunSummaryScreen | null = null
   private evolutionOverlay: EvolutionOverlay
-  private collectedBooksBar: CollectedBooksBar
-  private droppedBookUI:    DroppedBookUI
 
   // Run state
   private running  = false
@@ -90,28 +88,6 @@ export class Game {
     this.evolutionOverlay = new EvolutionOverlay(
       document.getElementById('evolution-overlay-root') as HTMLDivElement,
     )
-    this.collectedBooksBar = new CollectedBooksBar(
-      document.getElementById('collected-books-root') as HTMLDivElement,
-      () => [...this.inventory.spellPool],
-      book => this.droppedBookUI.open(
-        book,
-        [...this.inventory.spellPool],
-        spellId => this.absorbSpell(spellId, book.spellIds),
-      ),
-    )
-    this.droppedBookUI = new DroppedBookUI(
-      document.getElementById('dropped-book-root') as HTMLDivElement,
-      () => { /* no-op — book removed from bar via removeBook */ },
-    )
-
-    // Wire enemy death → orb spawns → CollectedBooksBar
-    this.session.onEnemyDied = (spellIds, element, _pos) => {
-      const enemyName = this.describeElement(element)
-      // Orb already spawned in DungeonSession; we just register in the bar
-      // when the orb is actually collected (handled in loop via DungeonSession.activeOrbs)
-      void spellIds; void enemyName
-      // NOTE: CollectedBooksBar.addBook is called when the orb is collected (see loop)
-    }
   }
 
   start(): void {
@@ -175,9 +151,6 @@ export class Game {
 
     this.player.update(delta, this.inputManager, this.session.activeRoomBounds, this.sceneManager.angle, this.session.activeRoomObstacles)
 
-    // Detect player damage for DroppedBookUI shake
-    const hpBefore = this.player.hp
-
     // Mouse → world
     this.mouseNDC.set(this.inputManager.mouseX, this.inputManager.mouseY)
     this.mouseRaycaster.setFromCamera(this.mouseNDC, this.sceneManager.camera)
@@ -206,8 +179,7 @@ export class Game {
     for (const orb of this.session.activeOrbs) {
       if (orb.collected) {
         const spellIds = orb.collect()
-        this.collectedBooksBar.addBook(spellIds, this.describeElement(orb.getElement()), orb.getElement())
-        for (const id of spellIds) this.runData.recordBookCollected(id)
+        this.runData.recordBookCollected(spellIds)
       }
     }
 
@@ -231,11 +203,6 @@ export class Game {
       effect.update(delta, this.sceneManager.scene, this.session.activeEnemies)
     }
     this.activeEffects = this.activeEffects.filter(e => e.alive)
-
-    // DroppedBookUI shake on player damage
-    if (this.player.hp < hpBefore && this.droppedBookUI.isVisible) {
-      this.droppedBookUI.shakeOnDamage()
-    }
 
     this.sceneManager.followPlayer(this.player.position)
 
@@ -283,14 +250,15 @@ export class Game {
       localStorage.setItem('total_wins', String(totalWins))
     }
 
-    if (this.droppedBookUI.isVisible) this.droppedBookUI.dispose()
     this.evolutionOverlay.dispose()
 
     this.runSummaryScreen = new RunSummaryScreen({
       root:       document.getElementById('run-summary-root') as HTMLDivElement,
       runData:    this.runData,
+      inventory:  this.inventory,
       reason,
       onContinue: () => this.returnToLoadout(),
+      onOpenSpellbook: (spellPool) => this.openRewardSpellbook(spellPool),
     })
     this.runSummaryScreen.show()
   }
@@ -302,36 +270,32 @@ export class Game {
     this.session.dispose(this.sceneManager.scene)
     this.projectiles   = []
     this.activeEffects = []
-    this.collectedBooksBar.dispose()
-    this.collectedBooksBar = new CollectedBooksBar(
-      document.getElementById('collected-books-root') as HTMLDivElement,
-      () => [...this.inventory.spellPool],
-      book => this.droppedBookUI.open(
-        book,
-        [...this.inventory.spellPool],
-        spellId => this.absorbSpell(spellId, book.spellIds),
-      ),
-    )
     this.showLoadoutScreen()
   }
 
-  // ── Spell absorption ──────────────────────────────────────────────────────
+  // ── Reward spellbook ─────────────────────────────────────────────────────
 
-  private absorbSpell(spellId: string, allBookSpells: string[]): void {
-    this.inventory.addToPool(spellId)
-    this.grimoire.absorbBook([spellId])
-    this.runData.recordBookCollected(spellId)
-    this.collectedBooksBar.refreshBadges()
+  private openRewardSpellbook(spellPool: string[]): void {
+    const root = document.getElementById('loadout-root') as HTMLDivElement
 
-    // Check mastery evolution
-    const evolved = this.mastery.checkEvolution(spellId)
-    if (evolved && !this.inventory.ownsSpell(evolved)) {
-      this.inventory.addToPool(evolved)
-      this.inventory.replaceInLoadout(spellId, evolved)
-      this.spellBar.loadFromLoadout(this.inventory.activeLoadout)
-    }
-
-    void allBookSpells
+    const rewardBook = new Spellbook({
+      root,
+      owner: 'enemy',
+      spells: spellPool,
+      inventory: this.inventory,
+      booksCollected: this.runData.collectedBooks.length,
+      maxPicks: 3,
+      onConfirm: (result) => {
+        if (result.claimedSpells) {
+          for (const spellId of result.claimedSpells) {
+            this.inventory.addToPool(spellId)
+            this.grimoire.absorbBook([spellId])
+          }
+        }
+        rewardBook.dispose()
+      },
+    })
+    rewardBook.show()
   }
 
   // ── Casting ───────────────────────────────────────────────────────────────
@@ -487,15 +451,5 @@ export class Game {
       if (d < minDist) { minDist = d; nearest = e }
     }
     return nearest
-  }
-
-  private describeElement(element: string): string {
-    switch (element) {
-      case 'fire':      return 'Flame'
-      case 'ice':       return 'Frost'
-      case 'lightning': return 'Storm'
-      case 'arcane':    return 'Arcane'
-      default:          return 'Enemy'
-    }
   }
 }

@@ -1,12 +1,15 @@
 import type { RunData }           from '../progression/RunData'
+import type { PlayerInventory }   from '../progression/PlayerInventory'
 import { RUN_SUMMARY_AUTO_DISMISS_S } from '../constants'
 import { SPELLS }                 from '../spells/SpellDefinitions'
 
 export interface RunSummaryConfig {
   root:       HTMLDivElement
   runData:    RunData
+  inventory:  PlayerInventory
   reason:     'death' | 'victory'
   onContinue: () => void
+  onOpenSpellbook: (spellPool: string[]) => void
 }
 
 export class RunSummaryScreen {
@@ -38,7 +41,7 @@ export class RunSummaryScreen {
     const stats: { label: string; value: string }[] = [
       { label: 'ROOMS CLEARED',  value: String(this.config.runData.roomsCleared) },
       { label: 'ENEMIES SLAIN',  value: String(this.config.runData.enemiesDefeated) },
-      { label: 'BOOKS COLLECTED', value: String(this.config.runData.booksCollectedThisRun.length) },
+      { label: 'BOOKS COLLECTED', value: String(this.config.runData.collectedBooks.length) },
       { label: 'MOST CAST',       value: mostCast ? (SPELLS[mostCast.spellId]?.name ?? mostCast.spellId) + ` ×${mostCast.count}` : '—' },
       { label: 'DAMAGE DEALT',   value: String(Math.round(this.config.runData.damageDealt)) },
       { label: 'DAMAGE TAKEN',   value: String(Math.round(this.config.runData.damageTaken)) },
@@ -69,11 +72,34 @@ export class RunSummaryScreen {
     this.root.appendChild(panel)
     this.root.classList.add('visible')
 
+    // Show spellbook alert if books were collected
+    const collectedPool = this.config.runData.getCollectedSpellPool()
+    if (collectedPool.length > 0) {
+      this.showAlertIcon(this.config.runData.collectedBooks.length, collectedPool)
+    }
+
     this.timerId = setInterval(() => {
       this.countdown--
       btn.textContent = `Continue (${this.countdown}s)`
       if (this.countdown <= 0) this.doContinue()
     }, 1000)
+  }
+
+  private showAlertIcon(bookCount: number, spellPool: string[]): void {
+    const alert = document.createElement('div')
+    alert.className = 'spellbook-alert'
+    alert.innerHTML = '<svg viewBox="0 0 24 24" fill="#cc4444"><path d="M6 2h12l-1 1H7L6 2zM5 4h14v16c0 1.1-.9 2-2 2H7c-1.1 0-2-.9-2-2V4z"/><rect x="8" y="7" width="8" height="1.5" rx="0.5" fill="#1a0e0e"/><rect x="8" y="10" width="6" height="1.5" rx="0.5" fill="#1a0e0e"/><rect x="8" y="13" width="7" height="1.5" rx="0.5" fill="#1a0e0e"/></svg>'
+
+    const badge = document.createElement('div')
+    badge.className = 'spellbook-alert-badge'
+    badge.textContent = String(bookCount)
+    alert.appendChild(badge)
+
+    alert.addEventListener('click', () => {
+      this.config.onOpenSpellbook(spellPool)
+    })
+
+    this.root.appendChild(alert)
   }
 
   private doContinue(): void {
