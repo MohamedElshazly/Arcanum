@@ -73,7 +73,7 @@ export class Game {
 
     this.inputManager.update()
 
-    this.player.update(delta, this.inputManager, this.session.activeRoomBounds, this.sceneManager.angle)
+    this.player.update(delta, this.inputManager, this.session.activeRoomBounds, this.sceneManager.angle, this.session.activeRoomObstacles)
 
     // Project mouse NDC → world floor position
     this.mouseNDC.set(this.inputManager.mouseX, this.inputManager.mouseY)
@@ -125,6 +125,7 @@ export class Game {
 
     this.sceneManager.followPlayer(this.player.position)
 
+    const bossEnemy = this.session.bossEnemy
     this.hud.update(
       this.player,
       this.spellCaster,
@@ -132,6 +133,7 @@ export class Game {
       currentTime,
       this.session.dungeonData,
       this.session.currentRoomData?.id,
+      bossEnemy ? { hp: bossEnemy.hp, maxHp: bossEnemy.maxHp, phase: bossEnemy.phase } : null,
     )
     this.sceneManager.render()
   }

@@ -1,10 +1,13 @@
 import * as THREE  from 'three'
 import { SPELLS }  from '../spells/SpellDefinitions'
+import type { Spell } from '../spells/SpellDefinitions'
 import { Projectile } from './Projectile'
-import type { RoomBounds } from '../dungeon/Room'
+import type { RoomBounds, Obstacle } from '../dungeon/Room'
+
+export type EnemyArchetype = 'apprentice' | 'battle_mage' | 'boss'
 
 export interface EnemyConfig {
-  archetype: 'apprentice' | 'battle_mage'
+  archetype: EnemyArchetype
   spellIds:  string[]
   x: number
   z: number
@@ -15,19 +18,19 @@ export interface ScaledStats {
   hp: number; speed: number; castInterval: number; spellCount: number
 }
 
-const BASE_HP:    Record<'apprentice' | 'battle_mage', number> = { apprentice: 40, battle_mage: 80 }
-const BASE_SPEED: Record<'apprentice' | 'battle_mage', number> = { apprentice: 2.5, battle_mage: 1.8 }
+const BASE_HP:    Record<EnemyArchetype, number> = { apprentice: 40, battle_mage: 80, boss: 350 }
+const BASE_SPEED: Record<EnemyArchetype, number> = { apprentice: 2.5, battle_mage: 1.8, boss: 1.4 }
 
-export function scaleEnemyStats(
-  archetype: 'apprentice' | 'battle_mage',
-  depth: number,
-): ScaledStats {
+export function scaleEnemyStats(archetype: EnemyArchetype, depth: number): ScaledStats {
   const hpD    = Math.min(depth, 8)
   const speedD = Math.min(depth, 6)
+  // Cast intervals are 0.3s slower than before at all depths
+  const baseInterval = archetype === 'boss' ? 2.3 : 2.3
+  const minInterval  = archetype === 'boss' ? 0.8 : 1.1
   return {
-    hp:           Math.round(BASE_HP[archetype]    * Math.pow(1.15, hpD)),
+    hp:           Math.round(BASE_HP[archetype] * Math.pow(1.15, hpD)),
     speed:        BASE_SPEED[archetype] * Math.pow(1.05, speedD),
-    castInterval: Math.max(0.8, 2.0 - depth * 0.1),
+    castInterval: Math.max(minInterval, baseInterval - depth * 0.1),
     spellCount:   depth <= 2 ? 2 : depth <= 4 ? 3 : 4,
   }
 }
@@ -36,12 +39,15 @@ const ELEMENT_COLOR: Record<string, number> = {
   fire: 0xcc4400, ice: 0x4499cc, lightning: 0xcccc00, arcane: 0x9944cc,
 }
 
+const ENEMY_RADIUS = 0.5
+
 interface BlinkTelegraph {
   timer:       number
   destination: THREE.Vector3
   originRing:  THREE.Mesh
   destRing:    THREE.Mesh
   line:        THREE.Line
+  isCharge:    boolean
 }
 
 export class Enemy {
@@ -52,14 +58,26 @@ export class Enemy {
   alive  = true
 
   private readonly stats:     ScaledStats
-  private readonly archetype: 'apprentice' | 'battle_mage'
+  private readonly archetype: EnemyArchetype
   private readonly depth:     number
-  private spells = Object.values(SPELLS)
+  private spells: Spell[]    = []
   private castTimer           = 0
   private aggressionRange:    number
   private telegraph:          BlinkTelegraph | null = null
   private ghostTimer          = 0
   private ghostMesh:          THREE.Mesh | null = null
+  private orbitalRing:        THREE.Mesh | null = null
+  private orbitalAngle        = 0
+
+  // Death animation
+  private dying      = false
+  private dyingTimer = 0
+
+  // Boss-specific
+  private bossTrackedPhase: 1 | 2 | 3 = 1
+  private bossPhaseBreak   = 0
+  private bossQueue:  Array<{ spell: Spell; dir: THREE.Vector3 }> = []
+  private bossQueueTimer = 0
 
   constructor(config: EnemyConfig) {
     this.archetype = config.archetype
@@ -68,27 +86,68 @@ export class Enemy {
     this.hp        = this.stats.hp
     this.maxHp     = this.stats.hp
 
-    this.aggressionRange = config.depth <= 2 ? 8 : config.depth <= 4 ? 12 : 9999
+    this.aggressionRange = config.archetype === 'boss' ? 9999
+      : config.depth <= 2 ? 8 : config.depth <= 4 ? 12 : 9999
 
-    this.spells = config.spellIds
-      .map(id => SPELLS[id])
-      .filter(Boolean)
+    this.spells = config.spellIds.map(id => SPELLS[id]).filter(Boolean)
 
-    const isLarge = config.archetype === 'battle_mage'
-    const geo     = new THREE.BoxGeometry(0.8, isLarge ? 1.8 : 1.2, 0.8)
-    const color   = this.dominantColor()
-    const mat     = new THREE.MeshStandardMaterial({ color })
-    this.mesh     = new THREE.Mesh(geo, mat)
-    this.mesh.position.set(config.x, isLarge ? 0.9 : 0.6, config.z)
-    this.position = this.mesh.position
+    if (config.archetype === 'boss') {
+      const geo = new THREE.CylinderGeometry(0.9, 1.1, 2.8, 6)
+      const mat = new THREE.MeshStandardMaterial({
+        color:             0x110022,
+        emissive:          new THREE.Color(0x8800cc),
+        emissiveIntensity: 1.5,
+      })
+      this.mesh = new THREE.Mesh(geo, mat)
+      this.mesh.position.set(config.x, 1.4, config.z)
 
+      const ringGeo = new THREE.TorusGeometry(1.8, 0.1, 8, 48)
+      const ringMat = new THREE.MeshStandardMaterial({
+        color:             0xaa44ff,
+        emissive:          new THREE.Color(0x6600aa),
+        emissiveIntensity: 2,
+      })
+      this.orbitalRing = new THREE.Mesh(ringGeo, ringMat)
+      this.mesh.add(this.orbitalRing)
+    } else {
+      const isLarge = config.archetype === 'battle_mage'
+      const geo     = new THREE.BoxGeometry(0.8, isLarge ? 1.8 : 1.2, 0.8)
+      const color   = this.dominantColor()
+      const mat     = new THREE.MeshStandardMaterial({
+        color,
+        emissive:          new THREE.Color(0x222222),
+        emissiveIntensity: 1.0,
+      })
+      this.mesh     = new THREE.Mesh(geo, mat)
+      this.mesh.position.set(config.x, isLarge ? 0.9 : 0.6, config.z)
+    }
+
+    this.position  = this.mesh.position
     this.castTimer = Math.random() * this.stats.castInterval
+  }
+
+  get isBoss(): boolean { return this.archetype === 'boss' }
+
+  get phase(): 1 | 2 | 3 {
+    const r = this.hp / this.maxHp
+    return r > 0.66 ? 1 : r > 0.33 ? 2 : 3
+  }
+
+  /** Immediate cleanup — use when transitioning rooms. */
+  dispose(scene: THREE.Scene): void {
+    if (!this.alive && !this.dying) return
+    this.alive  = false
+    this.dying  = false
+    this.clearTelegraph(scene)
+    scene.remove(this.mesh)
+    this.mesh.geometry.dispose()
+    ;(this.mesh.material as THREE.MeshStandardMaterial).dispose()
+    if (this.ghostMesh) { scene.remove(this.ghostMesh); this.ghostMesh = null }
   }
 
   private dominantColor(): number {
     if (!this.spells.length) return 0x888888
-    const el = this.spells[0].element
-    return ELEMENT_COLOR[el] ?? 0x888888
+    return ELEMENT_COLOR[this.spells[0].element] ?? 0x888888
   }
 
   update(
@@ -96,125 +155,281 @@ export class Enemy {
     playerPos: THREE.Vector3,
     bounds: RoomBounds,
     scene: THREE.Scene,
-  ): Projectile | null {
-    if (!this.alive) return null
+    obstacles: readonly Obstacle[] = [],
+  ): Projectile[] {
+    // ── Death animation ───────────────────────────────────────────────────
+    if (this.dying) {
+      this.dyingTimer += delta
+      const t = Math.min(this.dyingTimer / 0.4, 1)
+      const s = 1 - t
+      this.mesh.scale.set(s, s, s)
+      const mat = this.mesh.material as THREE.MeshStandardMaterial
+      mat.transparent = true
+      mat.opacity     = 1 - t
+      if (this.dyingTimer >= 0.4) {
+        this.alive = false
+        scene.remove(this.mesh)
+        this.mesh.geometry.dispose()
+        mat.dispose()
+        if (this.ghostMesh) { scene.remove(this.ghostMesh); this.ghostMesh = null }
+      }
+      return []
+    }
 
+    if (!this.alive) return []
+
+    // ── Orbital ring ──────────────────────────────────────────────────────
+    if (this.orbitalRing) {
+      this.orbitalAngle += delta * (0.8 + (this.phase - 1) * 1.0)
+      this.orbitalRing.rotation.y = this.orbitalAngle
+      this.orbitalRing.rotation.x = Math.PI / 2 + Math.sin(this.orbitalAngle * 0.5) * 0.4
+      const rm = this.orbitalRing.material as THREE.MeshStandardMaterial
+      rm.emissiveIntensity = 1.5 + (this.phase - 1) * 1.5
+    }
+
+    // ── Ghost fade ────────────────────────────────────────────────────────
     if (this.ghostMesh) {
       this.ghostTimer -= delta
-      const mat = this.ghostMesh.material as THREE.MeshStandardMaterial
-      mat.opacity = Math.max(0, this.ghostTimer / 0.4)
+      const gm = this.ghostMesh.material as THREE.MeshStandardMaterial
+      gm.opacity = Math.max(0, this.ghostTimer / 0.4)
       if (this.ghostTimer <= 0) { scene.remove(this.ghostMesh); this.ghostMesh = null }
     }
 
+    // ── Telegraph ─────────────────────────────────────────────────────────
     if (this.telegraph) {
       this.telegraph.timer += delta
-      if (this.telegraph.timer >= 0.6) {
+      const telegraphTime = this.archetype === 'boss' ? 1.0 : 0.6
+      if (this.telegraph.timer >= telegraphTime) {
         this.executeBlink(this.telegraph.destination, scene)
         this.clearTelegraph(scene)
       }
-      return null
+      return []
     }
 
-    const dist = this.position.distanceTo(playerPos)
-    const inRange = dist < this.aggressionRange
+    // ── Boss phase transition pause ───────────────────────────────────────
+    if (this.archetype === 'boss') {
+      const currentPhase = this.phase
+      if (currentPhase !== this.bossTrackedPhase) {
+        this.bossTrackedPhase = currentPhase
+        this.bossPhaseBreak   = 1.5
+      }
+      if (this.bossPhaseBreak > 0) {
+        this.bossPhaseBreak -= delta
+        return []
+      }
+    }
 
-    if (!inRange) return null
+    const dist    = this.position.distanceTo(playerPos)
+    if (dist >= this.aggressionRange) return []
 
-    if (this.shouldBlink(playerPos, dist)) {
+    // ── Blink check ───────────────────────────────────────────────────────
+    if (this.shouldBlink(dist)) {
       const dest = this.blinkDestination(playerPos, bounds)
       if (dest) {
-        this.startTelegraph(dest, scene)
-        return null
+        this.startTelegraph(dest, scene, this.archetype === 'boss' && this.phase >= 2)
+        return []
       }
     }
 
-    this.moveToward(delta, playerPos, dist)
+    // ── Movement with steering ────────────────────────────────────────────
+    this.moveToward(delta, playerPos, dist, bounds, obstacles)
 
+    // ── Boss queued cast drain ────────────────────────────────────────────
+    if (this.archetype === 'boss' && this.bossQueue.length > 0) {
+      this.bossQueueTimer -= delta
+      if (this.bossQueueTimer <= 0) {
+        const next   = this.bossQueue.shift()!
+        const origin = this.position.clone().setY(0.75)
+        const mod    = { ...next.spell, damage: Math.round(next.spell.damage * 0.60) }
+        this.bossQueueTimer = 0.8
+        return [new Projectile(origin, next.dir, mod, scene)]
+      }
+      return []
+    }
+
+    // ── Cast timer ────────────────────────────────────────────────────────
     this.castTimer -= delta
     if (this.castTimer <= 0 && this.spells.length > 0) {
-      this.castTimer = this.stats.castInterval
-      return this.fireProjectile(playerPos, scene)
+      this.castTimer = this.activeCastInterval()
+      return this.fireProjectiles(playerPos, scene)
     }
 
-    return null
+    return []
   }
 
-  private moveToward(delta: number, playerPos: THREE.Vector3, dist: number): void {
-    if (this.archetype === 'battle_mage') {
-      const targetDist = 8
-      const tooClose   = dist < 6
+  // ── Cast interval per phase ───────────────────────────────────────────────
+
+  private activeCastInterval(): number {
+    if (this.archetype !== 'boss') return this.stats.castInterval
+    switch (this.phase) {
+      case 1: return this.stats.castInterval
+      case 2: return this.stats.castInterval * 0.65
+      case 3: return this.stats.castInterval * 0.35
+    }
+  }
+
+  // ── Movement ──────────────────────────────────────────────────────────────
+
+  private moveToward(
+    delta: number,
+    playerPos: THREE.Vector3,
+    dist: number,
+    bounds: RoomBounds,
+    obstacles: readonly Obstacle[],
+  ): void {
+    let dx = 0, dz = 0
+
+    if (this.archetype === 'boss') {
+      const targetDist = this.phase === 3 ? 4 : this.phase === 2 ? 7 : 10
+      const spd = this.phase === 3 ? this.stats.speed * 1.8 : this.stats.speed
       const dir = new THREE.Vector3().subVectors(playerPos, this.position).setY(0).normalize()
-      if (tooClose) {
-        this.position.x -= dir.x * this.stats.speed * delta
-        this.position.z -= dir.z * this.stats.speed * delta
-      } else if (dist > targetDist + 1) {
-        this.position.x += dir.x * this.stats.speed * delta
-        this.position.z += dir.z * this.stats.speed * delta
-      }
       const perp = new THREE.Vector3(-dir.z, 0, dir.x)
-      this.position.x += perp.x * this.stats.speed * 0.4 * delta
-      this.position.z += perp.z * this.stats.speed * 0.4 * delta
+
+      if (dist < targetDist - 1) {
+        dx = -dir.x * this.stats.speed * delta
+        dz = -dir.z * this.stats.speed * delta
+      } else if (dist > targetDist + 1) {
+        dx = dir.x * spd * delta
+        dz = dir.z * spd * delta
+      }
+      dx += perp.x * this.stats.speed * 0.3 * delta
+      dz += perp.z * this.stats.speed * 0.3 * delta
+
+    } else if (this.archetype === 'battle_mage') {
+      const dir  = new THREE.Vector3().subVectors(playerPos, this.position).setY(0).normalize()
+      const perp = new THREE.Vector3(-dir.z, 0, dir.x)
+      if (dist < 6) {
+        dx = -dir.x * this.stats.speed * delta
+        dz = -dir.z * this.stats.speed * delta
+      } else if (dist > 9) {
+        dx = dir.x * this.stats.speed * delta
+        dz = dir.z * this.stats.speed * delta
+      }
+      dx += perp.x * this.stats.speed * 0.4 * delta
+      dz += perp.z * this.stats.speed * 0.4 * delta
+
     } else {
       if (dist > 0.5) {
         const dir = new THREE.Vector3().subVectors(playerPos, this.position).setY(0).normalize()
-        this.position.x += dir.x * this.stats.speed * delta
-        this.position.z += dir.z * this.stats.speed * delta
+        dx = dir.x * this.stats.speed * delta
+        dz = dir.z * this.stats.speed * delta
       }
     }
+
+    if (dx === 0 && dz === 0) return
+    this.applyMovement(dx, dz, bounds, obstacles)
   }
 
-  private shouldBlink(_playerPos: THREE.Vector3, dist: number): boolean {
-    if (this.archetype === 'apprentice' && this.depth >= 5) {
-      return this.hp / this.maxHp < 0.3
+  private applyMovement(
+    dx: number,
+    dz: number,
+    bounds: RoomBounds,
+    obstacles: readonly Obstacle[],
+  ): void {
+    const len = Math.sqrt(dx * dx + dz * dz)
+    if (len === 0) return
+
+    const nx = dx / len
+    const nz = dz / len
+
+    // Check 0.5 units ahead
+    if (!this.isBlocked(this.position.x + nx * 0.5, this.position.z + nz * 0.5, bounds, obstacles)) {
+      this.position.x += dx
+      this.position.z += dz
+      return
     }
-    if (this.archetype === 'battle_mage' && this.depth >= 4) {
-      return dist < 3
+
+    // Try ±45° deflections
+    const c45 = Math.cos(Math.PI / 4)
+    const s45 = Math.sin(Math.PI / 4)
+    const deflections: [number, number][] = [
+      [nx * c45 - nz * s45, nx * s45 + nz * c45],
+      [nx * c45 + nz * s45, -nx * s45 + nz * c45],
+    ]
+    for (const [dnx, dnz] of deflections) {
+      if (!this.isBlocked(this.position.x + dnx * 0.5, this.position.z + dnz * 0.5, bounds, obstacles)) {
+        this.position.x += dnx * len
+        this.position.z += dnz * len
+        return
+      }
+    }
+    // Blocked — stay put
+  }
+
+  private isBlocked(x: number, z: number, bounds: RoomBounds, obstacles: readonly Obstacle[]): boolean {
+    const r = this.archetype === 'boss' ? 1.1 : ENEMY_RADIUS
+    if (x - r < bounds.minX || x + r > bounds.maxX) return true
+    if (z - r < bounds.minZ || z + r > bounds.maxZ) return true
+    for (const obs of obstacles) {
+      const dx = x - obs.x
+      const dz = z - obs.z
+      if (Math.sqrt(dx * dx + dz * dz) < obs.r + r) return true
     }
     return false
   }
 
+  // ── Blink ─────────────────────────────────────────────────────────────────
+
+  private shouldBlink(dist: number): boolean {
+    if (this.archetype === 'boss') {
+      return (this.phase === 2 && dist > 14) || (this.phase === 3 && dist > 8)
+    }
+    if (this.archetype === 'apprentice' && this.depth >= 5) return this.hp / this.maxHp < 0.3
+    if (this.archetype === 'battle_mage' && this.depth >= 4) return dist < 3
+    return false
+  }
+
   private blinkDestination(playerPos: THREE.Vector3, bounds: RoomBounds): THREE.Vector3 | null {
+    if (this.archetype === 'boss') {
+      const dir  = new THREE.Vector3().subVectors(playerPos, this.position).setY(0).normalize()
+      const perp = new THREE.Vector3(-dir.z, 0, dir.x)
+      const dest = playerPos.clone().addScaledVector(perp, 2.5)
+      dest.x = Math.max(bounds.minX + 1, Math.min(bounds.maxX - 1, dest.x))
+      dest.z = Math.max(bounds.minZ + 1, Math.min(bounds.maxZ - 1, dest.z))
+      return dest
+    }
     const away = new THREE.Vector3().subVectors(this.position, playerPos).setY(0).normalize()
-    const dist = this.archetype === 'battle_mage' && this.depth >= 6 ? -6 : 6
-    const dest = this.position.clone().addScaledVector(away, dist)
+    const d    = this.archetype === 'battle_mage' && this.depth >= 6 ? -6 : 6
+    const dest = this.position.clone().addScaledVector(away, d)
     dest.x = Math.max(bounds.minX + 1, Math.min(bounds.maxX - 1, dest.x))
     dest.z = Math.max(bounds.minZ + 1, Math.min(bounds.maxZ - 1, dest.z))
     return dest
   }
 
-  private startTelegraph(dest: THREE.Vector3, scene: THREE.Scene): void {
+  private startTelegraph(dest: THREE.Vector3, scene: THREE.Scene, isCharge = false): void {
+    const color   = isCharge ? 0xff2200 : 0xffffff
+    const emColor = new THREE.Color(isCharge ? 0xff2200 : 0xffffff)
     const ringGeo = new THREE.TorusGeometry(0.6, 0.05, 8, 32)
-    const mat1 = new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: new THREE.Color(0xffffff), emissiveIntensity: 2 })
-    const mat2 = mat1.clone()
+    const mat1    = new THREE.MeshStandardMaterial({ color, emissive: emColor, emissiveIntensity: 2 })
 
     const originRing = new THREE.Mesh(ringGeo, mat1)
     originRing.position.copy(this.position)
     originRing.rotation.x = Math.PI / 2
 
-    const destRing = new THREE.Mesh(ringGeo.clone(), mat2)
+    const destRing = new THREE.Mesh(ringGeo.clone(), mat1.clone())
     destRing.position.copy(dest)
     destRing.rotation.x = Math.PI / 2
 
-    const points = [this.position.clone(), dest.clone()]
-    const lineGeo = new THREE.BufferGeometry().setFromPoints(points)
-    const lineMat = new THREE.LineBasicMaterial({ color: 0xffffff, opacity: 0.5, transparent: true })
-    const line    = new THREE.Line(lineGeo, lineMat)
-
+    const pts    = [this.position.clone(), dest.clone()]
+    const line   = new THREE.Line(
+      new THREE.BufferGeometry().setFromPoints(pts),
+      new THREE.LineBasicMaterial({ color, opacity: 0.6, transparent: true }),
+    )
     scene.add(originRing, destRing, line)
-    this.telegraph = { timer: 0, destination: dest, originRing, destRing, line }
+    this.telegraph = { timer: 0, destination: dest, originRing, destRing, line, isCharge }
   }
 
   private executeBlink(dest: THREE.Vector3, scene: THREE.Scene): void {
     const ghostGeo = this.mesh.geometry.clone()
     const ghostMat = new THREE.MeshStandardMaterial({
-      color: (this.mesh.material as THREE.MeshStandardMaterial).color.clone(),
-      transparent: true, opacity: 0.8,
+      color:       (this.mesh.material as THREE.MeshStandardMaterial).color.clone(),
+      transparent: true,
+      opacity:     0.8,
     })
     this.ghostMesh  = new THREE.Mesh(ghostGeo, ghostMat)
     this.ghostMesh.position.copy(this.position)
     scene.add(this.ghostMesh)
     this.ghostTimer = 0.4
-
     this.position.copy(dest)
   }
 
@@ -224,23 +439,45 @@ export class Enemy {
     this.telegraph = null
   }
 
-  private fireProjectile(playerPos: THREE.Vector3, scene: THREE.Scene): Projectile | null {
+  // ── Projectile firing ─────────────────────────────────────────────────────
+
+  private fireProjectiles(playerPos: THREE.Vector3, scene: THREE.Scene): Projectile[] {
     const castable = this.spells.filter(s => s.id !== 'blink' && s.type === 'projectile')
-    if (!castable.length) return null
-    const spell = castable[Math.floor(Math.random() * castable.length)]
-    const dir   = new THREE.Vector3().subVectors(playerPos, this.position).setY(0).normalize()
-    const origin = this.position.clone().setY(0.75)
-    return new Projectile(origin, dir, spell, scene)
+    if (!castable.length) return []
+    const spell  = castable[Math.floor(Math.random() * castable.length)]
+    const base   = new THREE.Vector3().subVectors(playerPos, this.position).setY(0).normalize()
+
+    if (this.archetype !== 'boss') {
+      const dmg = Math.round(spell.damage * 0.65 * (1 + 0.08 * Math.min(this.depth, 8)))
+      const mod  = { ...spell, damage: dmg }
+      const origin = this.position.clone().setY(0.75)
+      return [new Projectile(origin, base, mod, scene)]
+    }
+
+    // Boss: populate queue, drain sequentially at 0.8s intervals
+    if (this.bossQueue.length > 0) return []  // already draining
+    const spreadCount = this.phase === 1 ? 1 : this.phase === 2 ? 3 : 5
+    const spreadAngle = Math.PI / 10
+    for (let i = 0; i < spreadCount; i++) {
+      const offset = (i - Math.floor(spreadCount / 2)) * spreadAngle
+      const dir    = base.clone().applyAxisAngle(new THREE.Vector3(0, 1, 0), offset)
+      this.bossQueue.push({ spell, dir })
+    }
+    this.bossQueueTimer = 0
+    return []
   }
+
+  // ── Damage / death ────────────────────────────────────────────────────────
 
   takeDamage(amount: number, scene: THREE.Scene): void {
     this.hp -= amount
-    if (this.hp <= 0) this.die(scene)
+    if (this.hp <= 0 && !this.dying) this.startDying(scene)
   }
 
-  private die(scene: THREE.Scene): void {
-    this.alive = false
+  private startDying(scene: THREE.Scene): void {
+    this.dying     = true
+    this.dyingTimer = 0
     this.clearTelegraph(scene)
-    scene.remove(this.mesh)
+    this.bossQueue  = []
   }
 }

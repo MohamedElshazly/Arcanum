@@ -125,10 +125,19 @@ export function assignBiomes(dungeon: DungeonData, rng: () => number): void {
   }
 
   for (const room of dungeon.rooms) {
-    if (room.type === 'start' || room.type === 'rest' || room.type === 'boss') {
+    if (room.type === 'start' || room.type === 'rest') {
       room.enemies = []; continue
     }
     const el: SpellElement = room.biome === 'stone' ? dominant : (room.biome as SpellElement)
-    room.enemies = generateEnemies(room, el, rng)
+    if (room.type === 'boss') {
+      room.enemies = [{
+        archetype: 'boss',
+        spellIds:  pickSpells(dominant, 4, room.depth, rng),
+        position:  { x: 0, z: -4 },
+        depth:     room.depth,
+      }]
+    } else {
+      room.enemies = generateEnemies(room, el, rng)
+    }
   }
 }

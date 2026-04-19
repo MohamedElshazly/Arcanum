@@ -19,7 +19,7 @@ export interface RoomData {
 }
 
 export interface EnemySpawnData {
-  archetype: 'apprentice' | 'battle_mage'
+  archetype: 'apprentice' | 'battle_mage' | 'boss'
   spellIds: string[]
   position: { x: number; z: number }
   depth: number
@@ -147,7 +147,7 @@ export function generateDungeon(seed: number): DungeonData {
       hazardCount: 0,
       connections: Array.from(connMap.get(key)!),
       enemies: [],
-      cleared: type === 'start' || type === 'rest' || type === 'boss',
+      cleared: type === 'start' || type === 'rest',
       visited: type === 'start',
     }
     grid[p.y][p.x] = room

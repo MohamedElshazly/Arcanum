@@ -47,10 +47,14 @@ export class DungeonSession {
     this.activateRoom(this.dungeon.startRoom, scene, null)
   }
 
-  get currentRoomData(): RoomData { return this.activeRoomData }
-  get dungeonData():     DungeonData { return this.dungeon }
-  get activeEnemies():   Enemy[] { return this.enemies }
-  get activeRoomBounds() { return this.activeRoom?.bounds ?? { minX: -9, maxX: 9, minZ: -9, maxZ: 9 } }
+  get currentRoomData():    RoomData    { return this.activeRoomData }
+  get dungeonData():        DungeonData { return this.dungeon }
+  get activeEnemies():      Enemy[]     { return this.enemies }
+  get activeRoomBounds()  { return this.activeRoom?.bounds ?? { minX: -9, maxX: 9, minZ: -9, maxZ: 9 } }
+  get activeRoomObstacles() { return this.activeRoom?.obstacles ?? [] }
+  get bossEnemy(): Enemy | null {
+    return this.enemies.find(e => e.alive && e.isBoss) ?? null
+  }
 
   update(delta: number, player: Player, scene: THREE.Scene): void {
     this.renderer.update(delta, scene)
@@ -85,9 +89,11 @@ export class DungeonSession {
   }
 
   private idleTick(delta: number, player: Player, scene: THREE.Scene): void {
+    this.activeRoom.update(delta)
+    const obstacles = this.activeRoom.obstacles
     for (const enemy of this.enemies) {
-      const proj = enemy.update(delta, player.position, this.activeRoom.bounds, scene)
-      if (proj) this.enemyProjectiles.push(proj)
+      const projs = enemy.update(delta, player.position, this.activeRoom.bounds, scene, obstacles)
+      this.enemyProjectiles.push(...projs)
     }
     this.enemies = this.enemies.filter(e => e.alive)
 
@@ -160,7 +166,7 @@ export class DungeonSession {
 
   private clearRoom(scene: THREE.Scene): void {
     this.activeRoom.dispose(scene)
-    for (const e of this.enemies) { if (e.alive) scene.remove(e.mesh) }
+    for (const e of this.enemies) e.dispose(scene)
     for (const p of this.enemyProjectiles) p.destroy(scene)
     this.enemies          = []
     this.enemyProjectiles = []

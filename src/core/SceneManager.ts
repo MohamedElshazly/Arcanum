@@ -28,7 +28,9 @@ export class SceneManager {
 
     const directional = new THREE.DirectionalLight(0xfff5e0, 0.8)
     directional.position.set(-10, 20, 10)
-    this.scene.add(this.ambientLight, directional)
+    const fillLight = new THREE.DirectionalLight(0xffffff, 0.6)
+    fillLight.position.set(5, 10, 5)
+    this.scene.add(this.ambientLight, directional, fillLight)
 
     window.addEventListener('resize', this.onResize)
   }
