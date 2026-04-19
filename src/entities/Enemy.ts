@@ -24,9 +24,8 @@ const BASE_SPEED: Record<EnemyArchetype, number> = { apprentice: 2.5, battle_mag
 export function scaleEnemyStats(archetype: EnemyArchetype, depth: number): ScaledStats {
   const hpD    = Math.min(depth, 8)
   const speedD = Math.min(depth, 6)
-  // Cast intervals are 0.3s slower than before at all depths
-  const baseInterval = archetype === 'boss' ? 2.3 : 2.3
-  const minInterval  = archetype === 'boss' ? 0.8 : 1.1
+  const baseInterval = archetype === 'boss' ? 2.3 : 2.0
+  const minInterval  = archetype === 'boss' ? 0.8 : 0.8
   return {
     hp:           Math.round(BASE_HP[archetype] * Math.pow(1.15, hpD)),
     speed:        BASE_SPEED[archetype] * Math.pow(1.05, speedD),
