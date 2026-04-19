@@ -8,6 +8,7 @@ import { BIOMES }             from './BiomeDefinitions'
 import { mulberry32 }         from '../utils/MathUtils'
 import { Enemy }              from '../entities/Enemy'
 import { Projectile }         from '../entities/Projectile'
+import { SpellBookOrb }       from '../entities/SpellBookOrb'
 import { circleVsRect }       from '../utils/CollisionUtils'
 import {
   OPPOSITE_DIR, getNeighborRoom,
@@ -15,7 +16,7 @@ import {
 } from './DungeonGenerator'
 import type { Player }        from '../entities/Player'
 import type { SceneManager }  from '../core/SceneManager'
-import { PLAYER_RADIUS } from '../constants'
+import { PLAYER_RADIUS }      from '../constants'
 
 type TransitionState = 'idle' | 'fade-out' | 'fade-in'
 
@@ -27,6 +28,7 @@ export class DungeonSession {
   private activeRoom!:      Room
   private enemies:          Enemy[]       = []
   private enemyProjectiles: Projectile[]  = []
+  private orbs:             SpellBookOrb[] = []
   private hazards:          HazardSystem  = new HazardSystem()
   private renderer!:        DungeonRenderer
   private sm!:              SceneManager
@@ -35,6 +37,9 @@ export class DungeonSession {
   private pendingDir:       Direction | null = null
   private overlay:          HTMLElement | null = null
   private shrineUsed        = false
+
+  /** Called when an enemy dies and an orb is ready. Game.ts wires this up. */
+  onEnemyDied: ((spellIds: string[], element: import('../spells/SpellDefinitions').SpellElement, position: THREE.Vector3) => void) | null = null
 
   init(scene: THREE.Scene, sm: SceneManager, seed: number): void {
     this.sm       = sm
@@ -50,6 +55,7 @@ export class DungeonSession {
   get currentRoomData():    RoomData    { return this.activeRoomData }
   get dungeonData():        DungeonData { return this.dungeon }
   get activeEnemies():      Enemy[]     { return this.enemies }
+  get activeOrbs():         SpellBookOrb[] { return this.orbs }
   get activeRoomBounds()  { return this.activeRoom?.bounds ?? { minX: -9, maxX: 9, minZ: -9, maxZ: 9 } }
   get activeRoomObstacles() { return this.activeRoom?.obstacles ?? [] }
   get bossEnemy(): Enemy | null {
@@ -88,12 +94,28 @@ export class DungeonSession {
     }
   }
 
+  /** Full cleanup — call when returning to LoadoutScreen between runs. */
+  dispose(scene: THREE.Scene): void {
+    this.clearRoom(scene)
+    this.transitionState = 'idle'
+    this.fadeTimer       = 0
+    this.pendingDir      = null
+    this.setOverlayOpacity(0)
+  }
+
   private idleTick(delta: number, player: Player, scene: THREE.Scene): void {
     this.activeRoom.update(delta)
     const obstacles = this.activeRoom.obstacles
+
     for (const enemy of this.enemies) {
       const projs = enemy.update(delta, player.position, this.activeRoom.bounds, scene, obstacles)
       this.enemyProjectiles.push(...projs)
+    }
+
+    // Detect newly dead enemies → spawn orbs
+    const justDied = this.enemies.filter(e => !e.alive)
+    for (const dead of justDied) {
+      this.spawnOrb(dead, scene)
     }
     this.enemies = this.enemies.filter(e => e.alive)
 
@@ -102,6 +124,12 @@ export class DungeonSession {
     }
     this.checkEnemyProjectilePlayerCollisions(player, scene)
     this.enemyProjectiles = this.enemyProjectiles.filter(p => p.alive)
+
+    // Update orbs
+    for (const orb of this.orbs) {
+      orb.update(delta, player.position)
+    }
+    this.orbs = this.orbs.filter(o => !o.collected)
 
     this.hazards.update(delta, player, scene)
 
@@ -122,11 +150,23 @@ export class DungeonSession {
     if (this.activeRoomData.cleared) {
       const crossed = this.activeRoom.checkDoorCrossing(player.position)
       if (crossed && this.activeRoomData.connections.includes(crossed)) {
-        this.pendingDir       = crossed
-        this.transitionState  = 'fade-out'
-        this.fadeTimer        = 0
+        this.pendingDir      = crossed
+        this.transitionState = 'fade-out'
+        this.fadeTimer       = 0
       }
     }
+  }
+
+  private spawnOrb(enemy: Enemy, scene: THREE.Scene): void {
+    if (enemy.ownedSpellIds.length === 0) return
+    const orb = new SpellBookOrb(
+      enemy.position.clone(),
+      enemy.ownedSpellIds,
+      enemy.dominantElement,
+      scene,
+    )
+    this.orbs.push(orb)
+    this.onEnemyDied?.(enemy.ownedSpellIds, enemy.dominantElement, enemy.position.clone())
   }
 
   private commitTransition(player: Player, scene: THREE.Scene): void {
@@ -165,11 +205,13 @@ export class DungeonSession {
   }
 
   private clearRoom(scene: THREE.Scene): void {
-    this.activeRoom.dispose(scene)
+    this.activeRoom?.dispose(scene)
     for (const e of this.enemies) e.dispose(scene)
     for (const p of this.enemyProjectiles) p.destroy(scene)
+    for (const o of this.orbs) o.dispose(scene)
     this.enemies          = []
     this.enemyProjectiles = []
+    this.orbs             = []
     this.hazards.clear(scene)
     this.renderer.clear(scene)
   }
@@ -214,4 +256,3 @@ export class DungeonSession {
     return h
   }
 }
-

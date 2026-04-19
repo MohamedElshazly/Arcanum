@@ -7,6 +7,15 @@ import { SpellCaster }   from '../spells/SpellCaster'
 import { SpellBar }      from '../spells/SpellBar'
 import { HUD }           from '../ui/HUD'
 import { DungeonSession } from '../dungeon/DungeonSession'
+import { LoadoutScreen } from '../ui/LoadoutScreen'
+import { CollectedBooksBar } from '../ui/CollectedBooksBar'
+import { DroppedBookUI }    from '../ui/DroppedBookUI'
+import { EvolutionOverlay } from '../ui/EvolutionOverlay'
+import { RunSummaryScreen } from '../ui/RunSummaryScreen'
+import { PlayerInventory }  from '../progression/PlayerInventory'
+import { MasterySystem }    from '../progression/MasterySystem'
+import { Grimoire }         from '../progression/Grimoire'
+import { RunData }          from '../progression/RunData'
 import {
   IEffect,
   castBlink,
@@ -46,27 +55,118 @@ export class Game {
   private mouseRaycaster = new THREE.Raycaster()
   private mouseNDC       = new THREE.Vector2()
 
+  // Progression
+  private inventory:    PlayerInventory
+  private mastery:      MasterySystem
+  private grimoire:     Grimoire
+  private runData:      RunData
+
+  // UI
+  private loadoutScreen:    LoadoutScreen | null = null
+  private runSummaryScreen: RunSummaryScreen | null = null
+  private evolutionOverlay: EvolutionOverlay
+  private collectedBooksBar: CollectedBooksBar
+  private droppedBookUI:    DroppedBookUI
+
+  // Run state
+  private running  = false
+  private rafId    = 0
+
   constructor() {
     this.sceneManager = new SceneManager()
     this.inputManager = new InputManager()
     this.player       = new Player()
-    this.spellCaster  = new SpellCaster(this.player)
-    this.spellBar     = new SpellBar()
-    this.hud          = new HUD()
     this.session      = new DungeonSession()
+
+    this.inventory = new PlayerInventory()
+    this.mastery   = new MasterySystem()
+    this.grimoire  = new Grimoire()
+    this.runData   = new RunData()
+
+    this.spellBar    = new SpellBar()
+    this.spellCaster = new SpellCaster(this.player, this.mastery, this.grimoire)
+    this.hud         = new HUD()
+
+    this.evolutionOverlay = new EvolutionOverlay(
+      document.getElementById('evolution-overlay-root') as HTMLDivElement,
+    )
+    this.collectedBooksBar = new CollectedBooksBar(
+      document.getElementById('collected-books-root') as HTMLDivElement,
+      () => [...this.inventory.spellPool],
+      book => this.droppedBookUI.open(
+        book,
+        [...this.inventory.spellPool],
+        spellId => this.absorbSpell(spellId, book.spellIds),
+      ),
+    )
+    this.droppedBookUI = new DroppedBookUI(
+      document.getElementById('dropped-book-root') as HTMLDivElement,
+      () => { /* no-op — book removed from bar via removeBook */ },
+    )
+
+    // Wire enemy death → orb spawns → CollectedBooksBar
+    this.session.onEnemyDied = (spellIds, element, _pos) => {
+      const enemyName = this.describeElement(element)
+      // Orb already spawned in DungeonSession; we just register in the bar
+      // when the orb is actually collected (handled in loop via DungeonSession.activeOrbs)
+      void spellIds; void enemyName
+      // NOTE: CollectedBooksBar.addBook is called when the orb is collected (see loop)
+    }
   }
 
   start(): void {
-    const seed = Math.floor(Math.random() * 0xFFFFFF)
-    this.session.init(this.sceneManager.scene, this.sceneManager, seed)
-    this.sceneManager.scene.add(this.player.mesh)
+    this.inventory.load()
+    this.mastery.load()
+    this.grimoire.load()
     this.hud.init()
-    this.clock.start()
-    requestAnimationFrame(this.loop)
+    this.sceneManager.scene.add(this.player.mesh)
+    this.showLoadoutScreen()
   }
 
+  // ── LoadoutScreen ──────────────────────────────────────────────────────────
+
+  private showLoadoutScreen(): void {
+    if (this.rafId) cancelAnimationFrame(this.rafId)
+    this.running = false
+
+    this.loadoutScreen = new LoadoutScreen({
+      root:           document.getElementById('loadout-root') as HTMLDivElement,
+      inventory:      this.inventory,
+      mastery:        this.mastery,
+      grimoire:       this.grimoire,
+      onEnterDungeon: () => this.startRun(),
+    })
+    this.loadoutScreen.show()
+  }
+
+  // ── Start run ─────────────────────────────────────────────────────────────
+
+  private startRun(): void {
+    if (this.loadoutScreen) { this.loadoutScreen.dispose(); this.loadoutScreen = null }
+
+    this.spellBar.loadFromLoadout(this.inventory.activeLoadout)
+    this.runData.reset()
+
+    this.player.hp       = this.player.maxHp
+    this.player.mana     = this.player.maxMana
+    this.player.position.set(0, 0.75, 0)
+
+    const seed = Math.floor(Math.random() * 0xFFFFFF)
+    this.session.init(this.sceneManager.scene, this.sceneManager, seed)
+
+    this.projectiles   = []
+    this.activeEffects = []
+
+    this.running = true
+    this.clock.start()
+    this.rafId = requestAnimationFrame(this.loop)
+  }
+
+  // ── Game loop ──────────────────────────────────────────────────────────────
+
   private loop = (): void => {
-    requestAnimationFrame(this.loop)
+    if (!this.running) return
+    this.rafId = requestAnimationFrame(this.loop)
 
     const delta       = Math.min(this.clock.getDelta(), DELTA_CAP)
     const currentTime = this.clock.getElapsedTime()
@@ -75,7 +175,10 @@ export class Game {
 
     this.player.update(delta, this.inputManager, this.session.activeRoomBounds, this.sceneManager.angle, this.session.activeRoomObstacles)
 
-    // Project mouse NDC → world floor position
+    // Detect player damage for DroppedBookUI shake
+    const hpBefore = this.player.hp
+
+    // Mouse → world
     this.mouseNDC.set(this.inputManager.mouseX, this.inputManager.mouseY)
     this.mouseRaycaster.setFromCamera(this.mouseNDC, this.sceneManager.camera)
     const hit = new THREE.Vector3()
@@ -83,17 +186,14 @@ export class Game {
       this.mouseWorld.copy(hit)
     }
 
-    // Camera rotation: scroll wheel
     const wheelDelta = this.inputManager.consumeWheelDelta()
     if (wheelDelta !== 0) this.sceneManager.rotateCamera(wheelDelta)
 
-    // Bar toggle
     if (this.inputManager.isJustPressed('Tab')) {
       this.spellBar.toggleBar()
       this.hud.onBarToggle()
     }
 
-    // Spell casting: Q=0, W=1, E=2, R=3
     for (let slotIdx = 0; slotIdx < 4; slotIdx++) {
       if (this.inputManager.isJustPressed(SLOT_KEYS[slotIdx])) {
         this.attemptCast(slotIdx, currentTime)
@@ -102,7 +202,16 @@ export class Game {
 
     this.session.update(delta, this.player, this.sceneManager.scene)
 
-    // Update homing targets for arcane_missile
+    // Check orb collection
+    for (const orb of this.session.activeOrbs) {
+      if (orb.collected) {
+        const spellIds = orb.collect()
+        this.collectedBooksBar.addBook(spellIds, this.describeElement(orb.getElement()), orb.getElement())
+        for (const id of spellIds) this.runData.recordBookCollected(id)
+      }
+    }
+
+    // Homing targets
     for (const proj of this.projectiles) {
       if (proj.spell.id === 'arcane_missile') {
         const target = this.nearestAliveEnemy(proj.mesh.position)
@@ -123,6 +232,11 @@ export class Game {
     }
     this.activeEffects = this.activeEffects.filter(e => e.alive)
 
+    // DroppedBookUI shake on player damage
+    if (this.player.hp < hpBefore && this.droppedBookUI.isVisible) {
+      this.droppedBookUI.shakeOnDamage()
+    }
+
     this.sceneManager.followPlayer(this.player.position)
 
     const bossEnemy = this.session.bossEnemy
@@ -136,13 +250,96 @@ export class Game {
       bossEnemy ? { hp: bossEnemy.hp, maxHp: bossEnemy.maxHp, phase: bossEnemy.phase } : null,
     )
     this.sceneManager.render()
+
+    // Win condition: boss room cleared
+    if (
+      this.session.currentRoomData?.type === 'boss' &&
+      this.session.currentRoomData.cleared
+    ) {
+      this.endRun('victory')
+      return
+    }
+
+    // Death condition
+    if (this.player.hp <= 0) {
+      this.endRun('death')
+    }
   }
+
+  // ── End run ───────────────────────────────────────────────────────────────
+
+  private endRun(reason: 'death' | 'victory'): void {
+    this.running = false
+    cancelAnimationFrame(this.rafId)
+
+    this.mastery.save()
+    this.grimoire.save()
+    this.inventory.save()
+
+    const totalRuns = parseInt(localStorage.getItem('total_runs') ?? '0', 10) + 1
+    localStorage.setItem('total_runs', String(totalRuns))
+    if (reason === 'victory') {
+      const totalWins = parseInt(localStorage.getItem('total_wins') ?? '0', 10) + 1
+      localStorage.setItem('total_wins', String(totalWins))
+    }
+
+    if (this.droppedBookUI.isVisible) this.droppedBookUI.dispose()
+    this.evolutionOverlay.dispose()
+
+    this.runSummaryScreen = new RunSummaryScreen({
+      root:       document.getElementById('run-summary-root') as HTMLDivElement,
+      runData:    this.runData,
+      reason,
+      onContinue: () => this.returnToLoadout(),
+    })
+    this.runSummaryScreen.show()
+  }
+
+  // ── Return to loadout ──────────────────────────────────────────────────────
+
+  private returnToLoadout(): void {
+    if (this.runSummaryScreen) { this.runSummaryScreen.dispose(); this.runSummaryScreen = null }
+    this.session.dispose(this.sceneManager.scene)
+    this.projectiles   = []
+    this.activeEffects = []
+    this.collectedBooksBar.dispose()
+    this.collectedBooksBar = new CollectedBooksBar(
+      document.getElementById('collected-books-root') as HTMLDivElement,
+      () => [...this.inventory.spellPool],
+      book => this.droppedBookUI.open(
+        book,
+        [...this.inventory.spellPool],
+        spellId => this.absorbSpell(spellId, book.spellIds),
+      ),
+    )
+    this.showLoadoutScreen()
+  }
+
+  // ── Spell absorption ──────────────────────────────────────────────────────
+
+  private absorbSpell(spellId: string, allBookSpells: string[]): void {
+    this.inventory.addToPool(spellId)
+    this.grimoire.absorbBook([spellId])
+    this.runData.recordBookCollected(spellId)
+    this.collectedBooksBar.refreshBadges()
+
+    // Check mastery evolution
+    const evolved = this.mastery.checkEvolution(spellId)
+    if (evolved && !this.inventory.ownsSpell(evolved)) {
+      this.inventory.addToPool(evolved)
+      this.inventory.replaceInLoadout(spellId, evolved)
+      this.spellBar.loadFromLoadout(this.inventory.activeLoadout)
+    }
+
+    void allBookSpells
+  }
+
+  // ── Casting ───────────────────────────────────────────────────────────────
 
   private attemptCast(slotIdx: number, currentTime: number): void {
     const spell = this.spellBar.getSpellAtSlot(slotIdx as 0 | 1 | 2 | 3)
     if (!spell) return
 
-    // Direction: mouse cursor position relative to player
     const mouseDir = new THREE.Vector3()
       .subVectors(this.mouseWorld, this.player.position)
       .setY(0)
@@ -154,12 +351,7 @@ export class Game {
     }
 
     const result = this.spellCaster.cast(
-      spell,
-      this.player,
-      [],
-      this.sceneManager.scene,
-      currentTime,
-      mouseDir,
+      spell, this.player, [], this.sceneManager.scene, currentTime, mouseDir,
     )
 
     const barIndex = (this.spellBar.activeBar - 1) as 0 | 1
@@ -169,16 +361,13 @@ export class Game {
     }
 
     this.hud.onCastSuccess(barIndex, slotIdx)
+    this.runData.recordCast(spell.id)
 
     if (result.projectile) {
-      if (spell.id === 'chain_lightning') {
-        result.projectile.jumpsRemaining = 3
-      }
       this.projectiles.push(result.projectile)
       return
     }
 
-    // Handle non-projectile spells
     if (result.spellId) {
       this.handleSpecialSpell(result.spellId, mouseDir)
     }
@@ -193,35 +382,22 @@ export class Game {
       case 'blink':
         castBlink(this.player.position, this.player.mesh, this.player.lastDirection)
         break
-
       case 'frozen_nova':
-        this.activeEffects.push(
-          new FrozenNovaEffect(pos, enemies, SPELLS.frozen_nova.damage, scene),
-        )
+        this.activeEffects.push(new FrozenNovaEffect(pos, enemies, SPELLS.frozen_nova.damage, scene))
         break
-
       case 'ice_wall':
         this.activeEffects.push(new IceWallEffect(pos, direction, scene))
         break
-
       case 'thunder_clap':
-        this.activeEffects.push(
-          new ThunderClapEffect(pos, enemies, SPELLS.thunder_clap.damage, SPELLS.thunder_clap.radius ?? 5, scene),
-        )
+        this.activeEffects.push(new ThunderClapEffect(pos, enemies, SPELLS.thunder_clap.damage, SPELLS.thunder_clap.radius ?? 5, scene))
         break
-
       case 'arcane_explosion':
-        this.activeEffects.push(
-          new ArcaneExplosionEffect(pos, enemies, SPELLS.arcane_explosion.damage, SPELLS.arcane_explosion.radius ?? 6, scene),
-        )
+        this.activeEffects.push(new ArcaneExplosionEffect(pos, enemies, SPELLS.arcane_explosion.damage, SPELLS.arcane_explosion.radius ?? 6, scene))
         break
-
       case 'static_field': {
-        const targetPos = this.mouseWorld.clone()
-        this.activeEffects.push(new StaticFieldEffect(targetPos, scene))
+        this.activeEffects.push(new StaticFieldEffect(this.mouseWorld.clone(), scene))
         break
       }
-
       case 'mana_siphon': {
         const nearest = this.nearestAliveEnemy(this.player.position)
         if (nearest && this.player.position.distanceTo(nearest.position) <= (SPELLS.mana_siphon.range ?? 8)) {
@@ -242,23 +418,15 @@ export class Game {
       for (const enemy of enemies) {
         if (!enemy.alive) continue
 
-        const projRadius = Math.max(
-          proj.spell.projectileScale.x,
-          proj.spell.projectileScale.z,
-        ) * 0.5
-
+        const projRadius = Math.max(proj.spell.projectileScale.x, proj.spell.projectileScale.z) * 0.5
         const hit = circleVsRect(
-          proj.mesh.position.x, proj.mesh.position.z,
-          projRadius,
-          enemy.position.x - ENEMY_HALF_X,
-          enemy.position.x + ENEMY_HALF_X,
-          enemy.position.z - ENEMY_HALF_Z,
-          enemy.position.z + ENEMY_HALF_Z,
+          proj.mesh.position.x, proj.mesh.position.z, projRadius,
+          enemy.position.x - ENEMY_HALF_X, enemy.position.x + ENEMY_HALF_X,
+          enemy.position.z - ENEMY_HALF_Z, enemy.position.z + ENEMY_HALF_Z,
         )
 
         if (!hit) continue
 
-        // AOE on impact (e.g. Pyroblast)
         if (proj.spell.radius && proj.spell.radius > 0) {
           const r2 = proj.spell.radius * proj.spell.radius
           const impactPos = proj.mesh.position.clone()
@@ -268,39 +436,26 @@ export class Game {
             const dz = other.position.z - impactPos.z
             if (dx * dx + dz * dz <= r2) {
               other.takeDamage(proj.damage, this.sceneManager.scene)
+              this.runData.damageDealt += proj.damage
             }
           }
         } else {
           enemy.takeDamage(proj.damage, this.sceneManager.scene)
+          this.runData.damageDealt += proj.damage
         }
 
-        // Ice impact frost decal
         if (proj.spell.element === 'ice') {
-          this.activeEffects.push(
-            new FrostDecalEffect(proj.mesh.position.clone(), this.sceneManager.scene),
-          )
+          this.activeEffects.push(new FrostDecalEffect(proj.mesh.position.clone(), this.sceneManager.scene))
         }
 
-        // Chain lightning: jump to next enemy
         if (proj.spell.id === 'chain_lightning' && proj.jumpsRemaining > 0) {
           const nextTarget = this.findChainTarget(enemy, enemies)
           if (nextTarget) {
             const from = proj.mesh.position.clone()
             const to   = nextTarget.position.clone()
-            this.activeEffects.push(
-              new LightningBoltEffect(from, to, this.sceneManager.scene),
-            )
-            const jumpDir = new THREE.Vector3()
-              .subVectors(to, from)
-              .setY(0)
-              .normalize()
-            const jumpProj = new Projectile(
-              from.setY(0.75),
-              jumpDir,
-              proj.spell,
-              this.sceneManager.scene,
-              proj.jumpsRemaining - 1,
-            )
+            this.activeEffects.push(new LightningBoltEffect(from, to, this.sceneManager.scene))
+            const jumpDir = new THREE.Vector3().subVectors(to, from).setY(0).normalize()
+            const jumpProj = new Projectile(from.setY(0.75), jumpDir, proj.spell, this.sceneManager.scene, proj.jumpsRemaining - 1)
             this.projectiles.push(jumpProj)
           }
         }
@@ -318,10 +473,7 @@ export class Game {
     for (const e of allEnemies) {
       if (!e.alive || e === hitEnemy) continue
       const d = hitEnemy.position.distanceTo(e.position)
-      if (d < jumpRange && d < minDist) {
-        minDist = d
-        nearest = e
-      }
+      if (d < jumpRange && d < minDist) { minDist = d; nearest = e }
     }
     return nearest
   }
@@ -335,5 +487,15 @@ export class Game {
       if (d < minDist) { minDist = d; nearest = e }
     }
     return nearest
+  }
+
+  private describeElement(element: string): string {
+    switch (element) {
+      case 'fire':      return 'Flame'
+      case 'ice':       return 'Frost'
+      case 'lightning': return 'Storm'
+      case 'arcane':    return 'Arcane'
+      default:          return 'Enemy'
+    }
   }
 }

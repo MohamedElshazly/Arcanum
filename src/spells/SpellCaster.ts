@@ -1,6 +1,8 @@
 import * as THREE from 'three'
 import { Spell, SPELLS } from './SpellDefinitions'
 import { Projectile }    from '../entities/Projectile'
+import type { MasterySystem } from '../progression/MasterySystem'
+import type { Grimoire }      from '../progression/Grimoire'
 
 export interface Entity {
   position: THREE.Vector3
@@ -16,16 +18,23 @@ export interface CastResult {
 }
 
 export class SpellCaster {
-  /** spellId → timestamp of last cast (from THREE.Clock.getElapsedTime) */
   private cooldowns = new Map<string, number>()
   private manaSrc:   { mana: number }
+  private mastery:   MasterySystem | null
+  private grimoire:  Grimoire | null
 
-  constructor(manaSrc: { mana: number }) {
-    this.manaSrc = manaSrc
+  constructor(
+    manaSrc:  { mana: number },
+    mastery:  MasterySystem | null = null,
+    grimoire: Grimoire | null      = null,
+  ) {
+    this.manaSrc  = manaSrc
+    this.mastery  = mastery
+    this.grimoire = grimoire
   }
 
   canCast(spell: Spell, currentMana: number, currentTime: number): boolean {
-    if (currentMana < spell.manaCost) return false
+    if (currentMana < this.effectiveCost(spell)) return false
     return this.getCooldownRemaining(spell.id, currentTime) <= 0
   }
 
@@ -37,24 +46,32 @@ export class SpellCaster {
     currentTime: number,
     direction?:  THREE.Vector3,
   ): CastResult {
-    if (this.manaSrc.mana < spell.manaCost) {
+    const cost = this.effectiveCost(spell)
+    if (this.manaSrc.mana < cost) {
       return { success: false, failReason: 'no_mana' }
     }
     if (this.getCooldownRemaining(spell.id, currentTime) > 0) {
       return { success: false, failReason: 'on_cooldown' }
     }
 
-    this.manaSrc.mana -= spell.manaCost
+    this.manaSrc.mana -= cost
     this.cooldowns.set(spell.id, currentTime)
+    this.mastery?.recordCast(spell.id)
 
     if (spell.type === 'projectile') {
-      const dir = direction ?? this.directionToNearest(targets, caster.position)
+      const dir    = direction ?? this.directionToNearest(targets, caster.position)
       const origin = caster.position.clone().setY(0.75)
-      const proj = new Projectile(origin, dir, spell, scene)
+      const effectiveSpell = this.applyDamageBonus(spell)
+      const proj   = new Projectile(origin, dir, effectiveSpell, scene)
+
+      if (spell.id === 'chain_lightning') {
+        const extra = Math.round(this.grimoire?.getPassiveValue('lightning_chain_bounces') ?? 0)
+        proj.jumpsRemaining = 3 + extra
+      }
+
       return { success: true, projectile: proj }
     }
 
-    // aoe / beam / self — Game.ts handles the actual effect via spellId
     return { success: true, spellId: spell.id }
   }
 
@@ -63,14 +80,34 @@ export class SpellCaster {
     if (!spell) return 0
     const lastCast = this.cooldowns.get(spellId)
     if (lastCast === undefined) return 0
-    return Math.max(0, spell.cooldown - (currentTime - lastCast))
+
+    let cd = spell.cooldown
+    const cdReduction = this.grimoire?.getPassiveValue('all_cooldown_reduction') ?? 0
+    cd *= (1 - cdReduction)
+    if (spellId === 'blink') {
+      cd = Math.max(0.5, cd - (this.grimoire?.getPassiveValue('arcane_blink_cooldown') ?? 0))
+    }
+    return Math.max(0, cd - (currentTime - lastCast))
   }
 
-  /** Returns 1 immediately after cast, decreasing to 0 as cooldown expires. */
   getCooldownPercent(spellId: string, currentTime: number): number {
     const spell = SPELLS[spellId]
     if (!spell || spell.cooldown <= 0) return 0
-    return this.getCooldownRemaining(spellId, currentTime) / spell.cooldown
+    const cdReduction = this.grimoire?.getPassiveValue('all_cooldown_reduction') ?? 0
+    const effectiveCd = spell.cooldown * (1 - cdReduction)
+    if (effectiveCd <= 0) return 0
+    return this.getCooldownRemaining(spellId, currentTime) / effectiveCd
+  }
+
+  private effectiveCost(spell: Spell): number {
+    const reduction = this.grimoire?.getPassiveValue('all_mana_cost_reduction') ?? 0
+    return Math.max(0, Math.ceil(spell.manaCost * (1 - reduction)))
+  }
+
+  private applyDamageBonus(spell: Spell): Spell {
+    const bonus = this.grimoire?.getPassiveValue('all_damage_bonus') ?? 0
+    if (bonus === 0) return spell
+    return { ...spell, damage: Math.round(spell.damage * (1 + bonus)) }
   }
 
   private directionToNearest(targets: Entity[], origin: THREE.Vector3): THREE.Vector3 {

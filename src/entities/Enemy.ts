@@ -133,6 +133,14 @@ export class Enemy {
     return r > 0.66 ? 1 : r > 0.33 ? 2 : 3
   }
 
+  get dominantElement(): import('../spells/SpellDefinitions').SpellElement {
+    return (this.spells[0]?.element ?? 'arcane') as import('../spells/SpellDefinitions').SpellElement
+  }
+
+  get ownedSpellIds(): string[] {
+    return this.spells.map(s => s.id)
+  }
+
   /** Immediate cleanup — use when transitioning rooms. */
   dispose(scene: THREE.Scene): void {
     if (!this.alive && !this.dying) return
