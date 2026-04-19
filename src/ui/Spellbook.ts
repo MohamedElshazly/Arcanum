@@ -70,9 +70,11 @@ export class Spellbook {
     book.appendChild(rightPage)
     overlay.appendChild(book)
     root.appendChild(overlay)
+    root.classList.add('visible')
   }
 
   dispose(): void {
+    this.config.root.classList.remove('visible')
     this.config.root.innerHTML = ''
     this.selectedSpellId = null
     this.claimedSpells = []
