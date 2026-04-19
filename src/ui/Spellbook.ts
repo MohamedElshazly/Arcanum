@@ -1,6 +1,6 @@
 import { SPELLS } from '../spells/SpellDefinitions'
 import type { SpellElement } from '../spells/SpellDefinitions'
-import { getSpellIcon, ELEMENT_COLORS, ELEMENT_GRADIENTS } from './SpellIcons'
+import { getSpellIcon, ELEMENT_GRADIENTS } from './SpellIcons'
 import type { PlayerInventory, ActiveLoadout } from '../progression/PlayerInventory'
 import type { MasterySystem } from '../progression/MasterySystem'
 import type { Grimoire } from '../progression/Grimoire'
