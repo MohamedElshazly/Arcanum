@@ -10,12 +10,12 @@ const STORAGE_KEY_POOL    = 'spell_pool'
 const STORAGE_KEY_LOADOUT = 'active_loadout'
 
 const DEFAULT_POOL: string[] = [
-  'fireball', 'frost_bolt', 'chain_lightning', 'arcane_missile', 'spark', 'blink',
+  'fireball', 'frost_bolt', 'spark', 'arcane_missile',
 ]
 
 const DEFAULT_LOADOUT: ActiveLoadout = {
-  bar1: ['fireball', 'frost_bolt', 'chain_lightning', 'arcane_missile'],
-  bar2: ['spark', 'blink', null, null],
+  bar1: ['fireball', 'frost_bolt', 'spark', 'arcane_missile'],
+  bar2: [null, null, null, null],
 }
 
 export class PlayerInventory {
