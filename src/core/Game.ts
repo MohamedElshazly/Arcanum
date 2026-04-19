@@ -69,6 +69,7 @@ export class Game {
   // Run state
   private running  = false
   private rafId    = 0
+  private lastRoomCleared = false
 
   constructor() {
     this.sceneManager = new SceneManager()
@@ -130,8 +131,13 @@ export class Game {
     const seed = Math.floor(Math.random() * 0xFFFFFF)
     this.session.init(this.sceneManager.scene, this.sceneManager, seed)
 
+    this.session.onEnemyDied = () => {
+      this.runData.enemiesDefeated++
+    }
+
     this.projectiles   = []
     this.activeEffects = []
+    this.lastRoomCleared = false
 
     this.running = true
     this.clock.start()
@@ -173,7 +179,22 @@ export class Game {
       }
     }
 
+    // Track damage taken (compare HP before/after session tick)
+    const hpBefore = this.player.hp
+
     this.session.update(delta, this.player, this.sceneManager.scene)
+
+    const hpAfter = this.player.hp
+    if (hpAfter < hpBefore) {
+      this.runData.damageTaken += hpBefore - hpAfter
+    }
+
+    // Track room clears
+    const roomNowCleared = this.session.currentRoomData?.cleared ?? false
+    if (roomNowCleared && !this.lastRoomCleared) {
+      this.runData.roomsCleared++
+    }
+    this.lastRoomCleared = roomNowCleared
 
     // Check orb collection
     for (const orb of this.session.activeOrbs) {

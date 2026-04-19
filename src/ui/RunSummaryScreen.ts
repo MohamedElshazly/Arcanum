@@ -76,13 +76,15 @@ export class RunSummaryScreen {
     const collectedPool = this.config.runData.getCollectedSpellPool()
     if (collectedPool.length > 0) {
       this.showAlertIcon(this.config.runData.collectedBooks.length, collectedPool)
+      // Don't auto-dismiss when there are spells to claim
+      btn.textContent = 'Continue'
+    } else {
+      this.timerId = setInterval(() => {
+        this.countdown--
+        btn.textContent = `Continue (${this.countdown}s)`
+        if (this.countdown <= 0) this.doContinue()
+      }, 1000)
     }
-
-    this.timerId = setInterval(() => {
-      this.countdown--
-      btn.textContent = `Continue (${this.countdown}s)`
-      if (this.countdown <= 0) this.doContinue()
-    }, 1000)
   }
 
   private showAlertIcon(bookCount: number, spellPool: string[]): void {

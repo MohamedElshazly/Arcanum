@@ -220,7 +220,9 @@ export class HazardSystem {
   update(delta: number, player: Player, scene: THREE.Scene): void {
     for (const h of this.hazards) {
       h.timer += delta
-      const dist   = player.position.distanceTo(h.position)
+      const dx = player.position.x - h.position.x
+      const dz = player.position.z - h.position.z
+      const dist   = Math.sqrt(dx * dx + dz * dz)
       const inRange = dist < h.def.radius
       const mat    = h.mesh.material as THREE.MeshStandardMaterial
       mat.emissiveIntensity = inRange ? 1.5 : 0.5
