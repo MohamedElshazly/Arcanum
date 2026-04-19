@@ -71,6 +71,9 @@ export class Spellbook {
     overlay.appendChild(book)
     root.appendChild(overlay)
     root.classList.add('visible')
+
+    // Trigger fade-in animation
+    requestAnimationFrame(() => overlay.classList.add('open'))
   }
 
   dispose(): void {
