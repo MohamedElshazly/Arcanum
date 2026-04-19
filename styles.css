@@ -948,3 +948,496 @@ body {
 }
 
 .run-summary-continue-btn:hover { filter: brightness(1.15); }
+
+/* ═══════════════════════════════════════════════════════════════════
+   SPELLBOOK — CSS Custom Property Themed Styles
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* ── Theme: Player ────────────────────────────────────────────── */
+[data-owner="player"] {
+  --sb-parchment-bg: linear-gradient(135deg, #f5e6c8 0%, #e8d5a8 20%, #f0deb8 40%, #dcc89a 60%, #f2e0b6 80%, #e5d0a0 100%);
+  --sb-noise: radial-gradient(ellipse at 20% 50%, rgba(160,120,60,0.08) 0%, transparent 50%),
+              radial-gradient(ellipse at 80% 20%, rgba(140,100,40,0.06) 0%, transparent 40%),
+              radial-gradient(ellipse at 50% 80%, rgba(180,140,80,0.05) 0%, transparent 60%);
+  --sb-stains: radial-gradient(circle at 15% 85%, rgba(139,90,43,0.06) 0%, transparent 25%),
+               radial-gradient(circle at 75% 15%, rgba(139,90,43,0.04) 0%, transparent 20%),
+               radial-gradient(circle at 45% 55%, rgba(139,90,43,0.03) 0%, transparent 30%);
+  --sb-edge-shadow: rgba(120,80,30,0.3);
+  --sb-spine-color: #8b6914;
+  --sb-tab-bg: #c8a96e;
+  --sb-tab-active: #e8d5a8;
+  --sb-border: rgba(139,105,20,0.4);
+  --sb-text: #3a2a14;
+  --sb-title: #5a3a10;
+  --sb-accent: #b8942e;
+  --sb-card-bg: rgba(255,255,255,0.25);
+  --sb-card-hover: rgba(255,255,255,0.4);
+  --sb-card-selected-bg: rgba(184,148,46,0.15);
+  --sb-card-selected-shadow: rgba(184,148,46,0.25);
+  --sb-btn-bg: linear-gradient(135deg, #5a3a10, #8b6914);
+  --sb-btn-hover: linear-gradient(135deg, #6a4a20, #9b7924);
+  --sb-btn-text: #f5e6c8;
+  --sb-scrollbar: rgba(180,140,80,0.5);
+  --sb-meta-text: rgba(58,42,20,0.6);
+  --sb-subtitle: rgba(90,58,16,0.6);
+  --sb-empty-text: rgba(90,58,16,0.35);
+  --sb-key-label: rgba(90,58,16,0.5);
+}
+
+/* ── Theme: Enemy ─────────────────────────────────────────────── */
+[data-owner="enemy"] {
+  --sb-parchment-bg: linear-gradient(135deg, #2a1a1a 0%, #1e1218 20%, #2c1c1c 40%, #1a1015 60%, #281818 80%, #1c1010 100%);
+  --sb-noise: radial-gradient(ellipse at 20% 50%, rgba(160,40,40,0.08) 0%, transparent 50%),
+              radial-gradient(ellipse at 80% 20%, rgba(120,30,60,0.06) 0%, transparent 40%),
+              radial-gradient(ellipse at 50% 80%, rgba(100,20,40,0.05) 0%, transparent 60%);
+  --sb-stains: radial-gradient(circle at 15% 85%, rgba(139,30,30,0.06) 0%, transparent 25%),
+               radial-gradient(circle at 75% 15%, rgba(100,20,40,0.04) 0%, transparent 20%);
+  --sb-edge-shadow: rgba(80,20,20,0.5);
+  --sb-spine-color: #4a1515;
+  --sb-tab-bg: #3a1818;
+  --sb-tab-active: #4a2020;
+  --sb-border: rgba(160,50,50,0.35);
+  --sb-text: #c8a090;
+  --sb-title: #cc6644;
+  --sb-accent: #cc4444;
+  --sb-card-bg: rgba(255,255,255,0.05);
+  --sb-card-hover: rgba(204,68,68,0.1);
+  --sb-card-selected-bg: rgba(204,68,68,0.15);
+  --sb-card-selected-shadow: rgba(204,68,68,0.2);
+  --sb-btn-bg: linear-gradient(135deg, #4a1515, #6a2020);
+  --sb-btn-hover: linear-gradient(135deg, #5a2020, #7a2a2a);
+  --sb-btn-text: #f0d0c0;
+  --sb-scrollbar: rgba(160,50,50,0.4);
+  --sb-meta-text: rgba(200,160,144,0.5);
+  --sb-subtitle: rgba(200,160,144,0.5);
+  --sb-empty-text: rgba(200,160,144,0.25);
+  --sb-key-label: rgba(200,160,144,0.4);
+}
+
+/* ── Overlay ──────────────────────────────────────────────────── */
+.spellbook-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: rgba(0,0,0,0.88);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+.spellbook-overlay.open { opacity: 1; }
+
+/* ── Book ─────────────────────────────────────────────────────── */
+.spellbook-book {
+  position: relative;
+  width: min(75vw, 900px);
+  height: min(85vh, 600px);
+  display: flex;
+  border-radius: 8px;
+  filter: drop-shadow(0 8px 32px rgba(0,0,0,0.6));
+  transform: scale(0.95);
+  transition: transform 0.3s ease;
+}
+.spellbook-overlay.open .spellbook-book { transform: scale(1); }
+
+.spellbook-book::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 2%;
+  bottom: 2%;
+  width: 18px;
+  transform: translateX(-50%);
+  background: linear-gradient(90deg, var(--sb-edge-shadow), var(--sb-spine-color), var(--sb-spine-color), var(--sb-edge-shadow));
+  border-radius: 2px;
+  z-index: 5;
+}
+
+/* ── Pages ────────────────────────────────────────────────────── */
+.spellbook-page {
+  flex: 1;
+  background: var(--sb-parchment-bg);
+  position: relative;
+  padding: 28px 24px;
+  overflow: hidden;
+  color: var(--sb-text);
+}
+.spellbook-page::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--sb-noise);
+  pointer-events: none;
+}
+.spellbook-page::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--sb-stains);
+  pointer-events: none;
+}
+.spellbook-page-left {
+  border-radius: 8px 0 0 8px;
+  border-right: 1px solid var(--sb-border);
+  box-shadow: inset -8px 0 16px -8px var(--sb-edge-shadow);
+}
+.spellbook-page-right {
+  border-radius: 0 8px 8px 0;
+  border-left: 1px solid var(--sb-border);
+  box-shadow: inset 8px 0 16px -8px var(--sb-edge-shadow);
+}
+
+/* ── Typography ───────────────────────────────────────────────── */
+.spellbook-page-title,
+.spellbook-title {
+  font-family: 'Cinzel', serif;
+  font-size: 20px;
+  color: var(--sb-title);
+  margin-bottom: 4px;
+  letter-spacing: 1.5px;
+  position: relative;
+  z-index: 2;
+}
+.spellbook-page-subtitle,
+.spellbook-subtitle {
+  font-size: 12px;
+  color: var(--sb-subtitle);
+  margin-bottom: 14px;
+  font-style: italic;
+  position: relative;
+  z-index: 2;
+}
+.spellbook-divider {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--sb-border), transparent);
+  margin-bottom: 14px;
+  position: relative;
+  z-index: 2;
+}
+
+/* ── Tabs ─────────────────────────────────────────────────────── */
+.spellbook-tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 14px;
+  position: relative;
+  z-index: 2;
+}
+.spellbook-tab {
+  font-family: 'Cinzel', serif;
+  font-size: 11px;
+  padding: 5px 10px;
+  border: 1px solid var(--sb-border);
+  border-bottom: none;
+  border-radius: 6px 6px 0 0;
+  background: var(--sb-tab-bg);
+  color: var(--sb-text);
+  cursor: pointer;
+  opacity: 0.65;
+  transition: all 0.2s;
+  letter-spacing: 0.5px;
+}
+.spellbook-tab:hover { opacity: 0.85; }
+.spellbook-tab.active {
+  opacity: 1;
+  background: var(--sb-tab-active);
+  font-weight: 700;
+  box-shadow: 0 -2px 4px rgba(0,0,0,0.08);
+}
+.spellbook-element-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  margin-right: 4px;
+  vertical-align: middle;
+}
+
+/* ── Spell Grid ───────────────────────────────────────────────── */
+.spellbook-spell-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  position: relative;
+  z-index: 2;
+  max-height: 380px;
+  overflow-y: auto;
+  padding-right: 4px;
+  transition: opacity 0.15s;
+}
+.spellbook-spell-grid.single-column { grid-template-columns: 1fr; }
+.spellbook-spell-grid.fading { opacity: 0; }
+.spellbook-spell-grid::-webkit-scrollbar { width: 4px; }
+.spellbook-spell-grid::-webkit-scrollbar-thumb { background: var(--sb-scrollbar); border-radius: 2px; }
+
+/* ── Spell Card ───────────────────────────────────────────────── */
+.spellbook-spell-card {
+  background: var(--sb-card-bg);
+  border: 1px solid var(--sb-border);
+  border-radius: 6px;
+  padding: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.spellbook-spell-card:hover {
+  background: var(--sb-card-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+.spellbook-spell-card.selected,
+.spellbook-spell-card.claimed {
+  border-color: var(--sb-accent);
+  background: var(--sb-card-selected-bg);
+  box-shadow: 0 0 12px var(--sb-card-selected-shadow), inset 0 0 8px rgba(0,0,0,0.05);
+}
+.spellbook-spell-card.locked { opacity: 0.4; cursor: not-allowed; }
+.spellbook-spell-card.already-owned { opacity: 0.45; cursor: default; }
+
+/* ── Spell Icon Box ───────────────────────────────────────────── */
+.spellbook-spell-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: #fff;
+  border: 1px solid rgba(0,0,0,0.15);
+}
+.spellbook-spell-icon svg { width: 20px; height: 20px; }
+
+.spellbook-spell-info { flex: 1; min-width: 0; }
+.spellbook-spell-name {
+  font-family: 'Cinzel', serif;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--sb-text);
+  margin-bottom: 2px;
+}
+.spellbook-spell-meta {
+  font-size: 10px;
+  color: var(--sb-meta-text);
+  display: flex;
+  gap: 8px;
+}
+.spellbook-mastery-stars {
+  font-size: 10px;
+  color: var(--sb-accent);
+  flex-shrink: 0;
+}
+
+/* ── Loadout Slots ────────────────────────────────────────────── */
+.spellbook-loadout-section,
+.spellbook-loadout-bar { position: relative; z-index: 2; }
+.spellbook-bar-label {
+  font-family: 'Cinzel', serif;
+  font-size: 11px;
+  color: var(--sb-subtitle);
+  margin-bottom: 6px;
+  letter-spacing: 1px;
+}
+.spellbook-bar,
+.spellbook-loadout-slots { display: flex; gap: 8px; margin-bottom: 14px; }
+.spellbook-loadout-slot {
+  width: 80px;
+  height: 80px;
+  border: 2px dashed var(--sb-border);
+  border-radius: 6px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  background: rgba(255,255,255,0.08);
+  position: relative;
+}
+.spellbook-loadout-slot:hover {
+  border-color: var(--sb-accent);
+  background: rgba(0,0,0,0.04);
+}
+.spellbook-loadout-slot.filled { border-style: solid; background: var(--sb-card-bg); }
+.spellbook-key-label,
+.spellbook-slot-key {
+  font-family: 'Cinzel', serif;
+  font-size: 9px;
+  color: var(--sb-key-label);
+  position: absolute;
+  top: 4px;
+  left: 6px;
+}
+.spellbook-empty-text,
+.spellbook-slot-empty {
+  font-size: 10px;
+  color: var(--sb-empty-text);
+  font-style: italic;
+}
+.spellbook-slot-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  margin-bottom: 2px;
+}
+.spellbook-slot-icon svg { width: 16px; height: 16px; }
+.spellbook-slot-name {
+  font-size: 9px;
+  font-family: 'Cinzel', serif;
+  color: var(--sb-text);
+}
+
+/* ── Claim Slots (enemy) ──────────────────────────────────────── */
+.spellbook-claim-section,
+.spellbook-claim-slots { position: relative; z-index: 2; }
+.spellbook-claim-slot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px;
+  border: 1px dashed var(--sb-border);
+  border-radius: 6px;
+  margin-bottom: 8px;
+  min-height: 50px;
+  background: rgba(255,255,255,0.03);
+  cursor: pointer;
+}
+.spellbook-claim-slot.filled {
+  border-style: solid;
+  border-color: var(--sb-accent);
+  background: var(--sb-card-selected-bg);
+}
+.spellbook-slot-num {
+  font-family: 'Cinzel', serif;
+  font-size: 14px;
+  color: var(--sb-empty-text);
+  width: 20px;
+  text-align: center;
+}
+.spellbook-slot-num.filled { color: var(--sb-title); }
+.spellbook-picks-counter {
+  text-align: center;
+  font-size: 12px;
+  color: var(--sb-meta-text);
+  margin-top: 8px;
+  font-style: italic;
+  position: relative;
+  z-index: 2;
+}
+
+/* ── Passives ─────────────────────────────────────────────────── */
+.spellbook-passives-section { margin-top: 12px; position: relative; z-index: 2; }
+.spellbook-passive-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--sb-card-bg);
+  border: 1px solid var(--sb-border);
+  border-radius: 12px;
+  padding: 3px 10px;
+  font-size: 10px;
+  margin: 2px;
+  color: var(--sb-text);
+}
+.spellbook-passive-hint {
+  font-size: 11px;
+  color: var(--sb-empty-text);
+  font-style: italic;
+}
+
+/* ── Confirm Button ───────────────────────────────────────────── */
+.spellbook-confirm-btn {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  margin-top: 16px;
+  padding: 10px;
+  font-family: 'Cinzel', serif;
+  font-size: 14px;
+  letter-spacing: 2px;
+  color: var(--sb-btn-text);
+  background: var(--sb-btn-bg);
+  border: 1px solid var(--sb-accent);
+  border-radius: 6px;
+  cursor: pointer;
+  text-transform: uppercase;
+  transition: all 0.2s;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
+.spellbook-confirm-btn:hover {
+  background: var(--sb-btn-hover);
+  box-shadow: 0 2px 12px rgba(0,0,0,0.3);
+}
+
+/* ── Enemy Badge ──────────────────────────────────────────────── */
+.spellbook-enemy-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(204,68,68,0.15);
+  border: 1px solid rgba(204,68,68,0.3);
+  border-radius: 4px;
+  padding: 2px 8px;
+  font-size: 10px;
+  color: #cc6644;
+  font-family: 'Cinzel', serif;
+  letter-spacing: 1px;
+  margin-bottom: 10px;
+  position: relative;
+  z-index: 2;
+}
+
+/* ── Card Shake (locked) ──────────────────────────────────────── */
+@keyframes card-shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-4px); }
+  75% { transform: translateX(4px); }
+}
+.card-shake { animation: card-shake 0.25s ease; }
+
+/* ── Spellbook Alert Icon (reward phase) ──────────────────────── */
+.spellbook-alert {
+  position: fixed;
+  bottom: 16px;
+  right: 16px;
+  width: 44px;
+  height: 44px;
+  background: radial-gradient(circle, #8b2020, #5a1010);
+  border: 2px solid #cc4444;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  animation: alert-pulse 1.5s ease-in-out infinite;
+  box-shadow: 0 0 12px rgba(204,68,68,0.4);
+  z-index: 90;
+}
+.spellbook-alert svg { width: 22px; height: 22px; }
+.spellbook-alert-badge {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  background: #ff3333;
+  color: #fff;
+  font-size: 11px;
+  font-weight: bold;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: system-ui, sans-serif;
+}
+@keyframes alert-pulse {
+  0%, 100% { box-shadow: 0 0 8px rgba(204,68,68,0.3); transform: scale(1); }
+  50% { box-shadow: 0 0 18px rgba(204,68,68,0.6); transform: scale(1.05); }
+}
