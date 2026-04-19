@@ -12,6 +12,7 @@ import { CollectedBooksBar } from '../ui/CollectedBooksBar'
 import { DroppedBookUI }    from '../ui/DroppedBookUI'
 import { EvolutionOverlay } from '../ui/EvolutionOverlay'
 import { RunSummaryScreen } from '../ui/RunSummaryScreen'
+import { Spellbook }       from '../ui/Spellbook'
 import { PlayerInventory }  from '../progression/PlayerInventory'
 import { MasterySystem }    from '../progression/MasterySystem'
 import { Grimoire }         from '../progression/Grimoire'
@@ -289,8 +290,10 @@ export class Game {
     this.runSummaryScreen = new RunSummaryScreen({
       root:       document.getElementById('run-summary-root') as HTMLDivElement,
       runData:    this.runData,
+      inventory:  this.inventory,
       reason,
       onContinue: () => this.returnToLoadout(),
+      onOpenSpellbook: (spellPool) => this.openRewardSpellbook(spellPool),
     })
     this.runSummaryScreen.show()
   }
@@ -313,6 +316,31 @@ export class Game {
       ),
     )
     this.showLoadoutScreen()
+  }
+
+  // ── Reward spellbook ─────────────────────────────────────────────────────
+
+  private openRewardSpellbook(spellPool: string[]): void {
+    const root = document.getElementById('loadout-root') as HTMLDivElement
+
+    const rewardBook = new Spellbook({
+      root,
+      owner: 'enemy',
+      spells: spellPool,
+      inventory: this.inventory,
+      booksCollected: this.runData.collectedBooks.length,
+      maxPicks: 3,
+      onConfirm: (result) => {
+        if (result.claimedSpells) {
+          for (const spellId of result.claimedSpells) {
+            this.inventory.addToPool(spellId)
+            this.grimoire.absorbBook([spellId])
+          }
+        }
+        rewardBook.dispose()
+      },
+    })
+    rewardBook.show()
   }
 
   // ── Spell absorption ──────────────────────────────────────────────────────
