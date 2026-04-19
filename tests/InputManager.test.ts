@@ -52,10 +52,10 @@ describe('InputManager', () => {
     expect(input.isHeld('ArrowUp')).toBe(false)
   })
 
-  it('raw Q/W/E/R keys are ignored', () => {
+  it('raw Q/E/R/F keys pass through directly', () => {
     window.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyQ', bubbles: true }))
     input.update()
-    expect(input.isJustPressed('KeyQ')).toBe(false)
+    expect(input.isJustPressed('KeyQ')).toBe(true)
   })
 
   it('Tab still registers normally', () => {

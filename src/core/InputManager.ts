@@ -26,10 +26,9 @@ export class InputManager {
     'Digit4': 'KeyF',
   }
 
-  // Raw arrow keys blocked; WASD remapped above; Digit1-4 targets blocked; everything else passes through.
+  // Raw arrow keys blocked (WASD remaps to arrows above); everything else passes through.
   private readonly ignoredKeys = new Set([
     'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight',
-    'KeyQ', 'KeyE', 'KeyR', 'KeyF',
   ])
 
   private onKeyDown = (e: KeyboardEvent): void => {
