@@ -7,6 +7,12 @@ export class SceneManager {
   readonly camera:     THREE.OrthographicCamera
   readonly ambientLight = new THREE.AmbientLight(0xffffff, 0.6)
 
+  private _cameraAngle = 0
+  private readonly CAM_RADIUS = 14
+  private readonly CAM_HEIGHT = 20
+
+  get angle(): number { return this._cameraAngle }
+
   constructor() {
     this.renderer.setSize(window.innerWidth, window.innerHeight)
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
@@ -17,7 +23,6 @@ export class SceneManager {
     this.camera  = new THREE.OrthographicCamera(
       -hw, hw, hw / aspect, -hw / aspect, 0.1, 200
     )
-    // Isometric-style angle: ~55° pitch, 45° yaw
     this.camera.position.set(0, 20, 14)
     this.camera.lookAt(0, 0, 0)
 
@@ -32,15 +37,19 @@ export class SceneManager {
     this.renderer.render(this.scene, this.camera)
   }
 
-  followPlayer(playerPos: THREE.Vector3, _delta: number): void {
-    const target = playerPos.clone().add(new THREE.Vector3(0, 20, 14))
-    this.camera.position.lerp(target, 0.08)
+  /** Position camera above playerPos at the current orbit angle. Call every frame. */
+  followPlayer(playerPos: THREE.Vector3): void {
+    this.camera.position.set(
+      playerPos.x + Math.sin(this._cameraAngle) * this.CAM_RADIUS,
+      playerPos.y + this.CAM_HEIGHT,
+      playerPos.z + Math.cos(this._cameraAngle) * this.CAM_RADIUS,
+    )
     this.camera.lookAt(playerPos)
   }
 
-  snapToRoom(center: THREE.Vector3): void {
-    this.camera.position.copy(center.clone().add(new THREE.Vector3(0, 20, 14)))
-    this.camera.lookAt(center)
+  /** Rotate the orbit angle; followPlayer() applies the new position. */
+  rotateCamera(dAngle: number): void {
+    this._cameraAngle += dAngle
   }
 
   private onResize = (): void => {

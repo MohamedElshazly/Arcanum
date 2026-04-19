@@ -63,11 +63,10 @@ export class Room {
 
   /** Returns the Direction the player has "crossed" into, or null. */
   checkDoorCrossing(playerPos: THREE.Vector3): Direction | null {
-    const half = this.roomSize / 2
-    if (playerPos.z < -(half - WALL_T) && Math.abs(playerPos.x) < DOOR_HALF) return 'north'
-    if (playerPos.z >  (half - WALL_T) && Math.abs(playerPos.x) < DOOR_HALF) return 'south'
-    if (playerPos.x < -(half - WALL_T) && Math.abs(playerPos.z) < DOOR_HALF) return 'west'
-    if (playerPos.x >  (half - WALL_T) && Math.abs(playerPos.z) < DOOR_HALF) return 'east'
+    if (playerPos.z < this.bounds.minZ + 1 && Math.abs(playerPos.x) < DOOR_HALF) return 'north'
+    if (playerPos.z > this.bounds.maxZ - 1 && Math.abs(playerPos.x) < DOOR_HALF) return 'south'
+    if (playerPos.x < this.bounds.minX + 1 && Math.abs(playerPos.z) < DOOR_HALF) return 'west'
+    if (playerPos.x > this.bounds.maxX - 1 && Math.abs(playerPos.z) < DOOR_HALF) return 'east'
     return null
   }
 

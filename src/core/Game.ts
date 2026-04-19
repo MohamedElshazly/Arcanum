@@ -27,7 +27,7 @@ import {
 import { SPELLS } from '../spells/SpellDefinitions'
 import type { Enemy } from '../entities/Enemy'
 
-const SLOT_KEYS = ['KeyQ', 'KeyW', 'KeyE', 'KeyR'] as const
+const SLOT_KEYS = ['KeyQ', 'KeyE', 'KeyR', 'KeyF'] as const
 
 export class Game {
   private sceneManager:  SceneManager
@@ -73,7 +73,7 @@ export class Game {
 
     this.inputManager.update()
 
-    this.player.update(delta, this.inputManager, this.session.activeRoomBounds)
+    this.player.update(delta, this.inputManager, this.session.activeRoomBounds, this.sceneManager.angle)
 
     // Project mouse NDC → world floor position
     this.mouseNDC.set(this.inputManager.mouseX, this.inputManager.mouseY)
@@ -82,6 +82,10 @@ export class Game {
     if (this.mouseRaycaster.ray.intersectPlane(this.floorPlane, hit)) {
       this.mouseWorld.copy(hit)
     }
+
+    // Camera rotation: scroll wheel
+    const wheelDelta = this.inputManager.consumeWheelDelta()
+    if (wheelDelta !== 0) this.sceneManager.rotateCamera(wheelDelta)
 
     // Bar toggle
     if (this.inputManager.isJustPressed('Tab')) {
@@ -119,7 +123,7 @@ export class Game {
     }
     this.activeEffects = this.activeEffects.filter(e => e.alive)
 
-    this.sceneManager.followPlayer(this.player.position, delta)
+    this.sceneManager.followPlayer(this.player.position)
 
     this.hud.update(
       this.player,

@@ -9,28 +9,22 @@ export class InputManager {
   mouseX = 0
   mouseY = 0
 
+  private _wheelDelta = 0
+
   /**
    * Maps physical key codes to logical key codes understood by the rest of
    * the game. WASD → Arrow codes (Player.ts), Digit1-4 → KeyQ/W/E/R (Game.ts).
    */
   private readonly keyMap: Record<string, string> = {
-    'KeyW':   'ArrowUp',
-    'KeyA':   'ArrowLeft',
-    'KeyS':   'ArrowDown',
-    'KeyD':   'ArrowRight',
-    'Digit1': 'KeyQ',
-    'Digit2': 'KeyW',
-    'Digit3': 'KeyE',
-    'Digit4': 'KeyR',
+    'KeyW': 'ArrowUp',
+    'KeyA': 'ArrowLeft',
+    'KeyS': 'ArrowDown',
+    'KeyD': 'ArrowRight',
   }
 
-  /**
-   * Raw physical keys that are superseded by the remapped equivalents above.
-   * Pressing these directly does nothing.
-   */
+  // Raw arrow keys blocked; WASD remapped above; everything else passes through.
   private readonly ignoredKeys = new Set([
     'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight',
-    'KeyQ', 'KeyW', 'KeyE', 'KeyR',
   ])
 
   private onKeyDown = (e: KeyboardEvent): void => {
@@ -64,6 +58,11 @@ export class InputManager {
     this.pendingReleased.add(code)
   }
 
+  private onWheel = (e: WheelEvent): void => {
+    e.preventDefault()
+    this._wheelDelta += e.deltaY * 0.003
+  }
+
   private onMouseMove = (e: MouseEvent): void => {
     const canvas = document.querySelector('#game-canvas canvas') as HTMLCanvasElement | null
     if (!canvas) return
@@ -76,6 +75,14 @@ export class InputManager {
     window.addEventListener('keydown',   this.onKeyDown)
     window.addEventListener('keyup',     this.onKeyUp)
     window.addEventListener('mousemove', this.onMouseMove)
+    window.addEventListener('wheel',     this.onWheel, { passive: false })
+  }
+
+  /** Returns accumulated scroll delta in radians and resets it. */
+  consumeWheelDelta(): number {
+    const d = this._wheelDelta
+    this._wheelDelta = 0
+    return d
   }
 
   update(): void {
@@ -93,5 +100,6 @@ export class InputManager {
     window.removeEventListener('keydown',   this.onKeyDown)
     window.removeEventListener('keyup',     this.onKeyUp)
     window.removeEventListener('mousemove', this.onMouseMove)
+    window.removeEventListener('wheel',     this.onWheel)
   }
 }

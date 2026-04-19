@@ -18,7 +18,13 @@
       "Bash(git -C /Users/omni/repos/arcanum commit -m \"chore: update Claude settings history\")",
       "Bash(git -C /Users/omni/repos/arcanum log --oneline -3)",
       "Bash(git -C /Users/omni/repos/arcanum commit -m \"chore: final Claude settings update\")",
-      "Bash(npm test *)"
+      "Bash(npm test *)",
+      "Bash(npx vitest *)",
+      "Bash(npx tsc *)",
+      "Bash(python3 -c \"import sys,json; p=json.load\\(sys.stdin\\); print\\(p.get\\('types',''\\), p.get\\('typings',''\\), list\\(p.get\\('exports',{}\\).get\\('.',{}\\).items\\(\\)\\)[:5]\\)\")",
+      "Bash(wait %1)",
+      "Bash(python3 -c \"import sys,json; p=json.load\\(sys.stdin\\); print\\(json.dumps\\({**p.get\\('dependencies',{}\\), **p.get\\('devDependencies',{}\\)}, indent=2\\)\\)\")",
+      "Bash(echo \"PID: $!\")"
     ]
   }
 }

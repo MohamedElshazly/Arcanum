@@ -29,7 +29,7 @@ export class Player {
     this.position = this.mesh.position
   }
 
-  update(delta: number, input: InputManager, bounds: RoomBounds): void {
+  update(delta: number, input: InputManager, bounds: RoomBounds, cameraAngle = 0): void {
     this.speedMultiplier = 1.0
 
     const dir = new THREE.Vector3()
@@ -39,6 +39,7 @@ export class Player {
     if (input.isHeld('ArrowDown'))  dir.z += 1
 
     if (dir.lengthSq() > 0) {
+      dir.applyAxisAngle(new THREE.Vector3(0, 1, 0), cameraAngle)
       dir.normalize()
       this.lastDirection.copy(dir)
       this.position.x += dir.x * PLAYER_SPEED * this.speedMultiplier * delta

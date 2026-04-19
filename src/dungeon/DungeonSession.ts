@@ -136,7 +136,7 @@ export class DungeonSession {
     player.position.set(spawnPos.x, player.position.y, spawnPos.z)
     this.pendingDir = null
 
-    this.sm.snapToRoom(new THREE.Vector3(0, 0, 0))
+    this.sm.followPlayer(player.position)
   }
 
   private activateRoom(roomData: RoomData, scene: THREE.Scene, _enterFrom: Direction | null): void {
