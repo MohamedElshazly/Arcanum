@@ -207,7 +207,7 @@ export class Game {
       if (orb.collected) {
         const spellIds = orb.collect()
         this.collectedBooksBar.addBook(spellIds, this.describeElement(orb.getElement()), orb.getElement())
-        for (const id of spellIds) this.runData.recordBookCollected(id)
+        this.runData.recordBookCollected(spellIds)
       }
     }
 
@@ -320,7 +320,7 @@ export class Game {
   private absorbSpell(spellId: string, allBookSpells: string[]): void {
     this.inventory.addToPool(spellId)
     this.grimoire.absorbBook([spellId])
-    this.runData.recordBookCollected(spellId)
+    this.runData.recordBookCollected(allBookSpells)
     this.collectedBooksBar.refreshBadges()
 
     // Check mastery evolution
