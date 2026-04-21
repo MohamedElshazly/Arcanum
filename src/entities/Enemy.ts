@@ -67,6 +67,7 @@ export class Enemy {
   private ghostMesh:          THREE.Mesh | null = null
   private orbitalRing:        THREE.Mesh | null = null
   private orbitalAngle        = 0
+  private blinkCooldown       = 0
 
   // Death animation
   private dying      = false
@@ -194,6 +195,9 @@ export class Enemy {
     }
 
     if (!this.alive) return []
+
+    // ── Blink cooldown tick ──────────────────────────────────────────────
+    if (this.blinkCooldown > 0) this.blinkCooldown -= delta
 
     // ── Orbital ring ──────────────────────────────────────────────────────
     if (this.orbitalRing) {
@@ -402,6 +406,7 @@ export class Enemy {
   // ── Blink ─────────────────────────────────────────────────────────────────
 
   private shouldBlink(dist: number): boolean {
+    if (this.blinkCooldown > 0) return false
     if (this.archetype === 'boss') {
       return (this.phase === 2 && dist > 14) || (this.phase === 3 && dist > 8)
     }
@@ -463,6 +468,7 @@ export class Enemy {
     scene.add(this.ghostMesh)
     this.ghostTimer = 0.4
     this.position.copy(dest)
+    this.blinkCooldown = this.archetype === 'boss' ? 3 : 5
   }
 
   private clearTelegraph(scene: THREE.Scene): void {
