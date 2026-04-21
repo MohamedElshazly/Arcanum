@@ -1104,7 +1104,8 @@ body {
   background: var(--sb-parchment-bg);
   position: relative;
   padding: 28px 24px;
-  overflow: hidden;
+  overflow-y: auto;
+  overflow-x: hidden;
   color: var(--sb-text);
 }
 .spellbook-page::before {
