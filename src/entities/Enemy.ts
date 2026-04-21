@@ -53,7 +53,6 @@ interface ActiveStatusEffect {
   type:       StatusEffectType
   remaining:  number
   value?:     number
-  tickTimer?: number
 }
 
 export class Enemy {
@@ -229,16 +228,20 @@ export class Enemy {
     let speedMult  = 1.0
     let isFrozen   = false
     let isStunned  = false
+    let hasBurning = false
+    let hasSlow    = false
 
     for (const fx of this.statusEffects) {
       switch (fx.type) {
         case 'burning': {
           const dmg = (fx.value ?? 5) * delta
           this.hp -= dmg
+          hasBurning = true
           break
         }
         case 'slow':
           speedMult *= (1 - (fx.value ?? 0.5))
+          hasSlow = true
           break
         case 'freeze':
           isFrozen = true
@@ -251,8 +254,10 @@ export class Enemy {
             .subVectors(this.position, playerPos)
             .setY(0)
             .normalize()
-          this.position.x += away.x * (fx.value ?? 5)
-          this.position.z += away.z * (fx.value ?? 5)
+          const kbDist = fx.value ?? 5
+          const r = this.archetype === 'boss' ? 1.1 : ENEMY_RADIUS
+          this.position.x = Math.max(bounds.minX + r, Math.min(bounds.maxX - r, this.position.x + away.x * kbDist))
+          this.position.z = Math.max(bounds.minZ + r, Math.min(bounds.maxZ - r, this.position.z + away.z * kbDist))
           fx.remaining = 0
           break
         }
@@ -271,19 +276,15 @@ export class Enemy {
 
     // Visual feedback — emissive tint based on highest-priority active effect
     const mat = this.mesh.material as THREE.MeshStandardMaterial
-    const freezeActive  = this.statusEffects.some(fx => fx.type === 'freeze')
-    const burnActive    = this.statusEffects.some(fx => fx.type === 'burning')
-    const stunActive    = this.statusEffects.some(fx => fx.type === 'stun')
-    const slowActive    = this.statusEffects.some(fx => fx.type === 'slow')
 
-    if (freezeActive)       mat.emissive.setHex(0x00ccff)
-    else if (burnActive)    mat.emissive.setHex(0xff6600)
-    else if (stunActive)    mat.emissive.setHex(0xffffff)
-    else if (slowActive)    mat.emissive.setHex(0x4444ff)
-    else                    mat.emissive.copy(this.originalEmissive)
+    if (isFrozen)            mat.emissive.setHex(0x00ccff)
+    else if (hasBurning)     mat.emissive.setHex(0xff6600)
+    else if (isStunned)      mat.emissive.setHex(0xffffff)
+    else if (hasSlow)        mat.emissive.setHex(0x4444ff)
+    else                     mat.emissive.copy(this.originalEmissive)
 
-    // Freeze: skip all AI
-    if (isFrozen) return []
+    // Freeze/stun: skip all AI (movement + casting + blink)
+    if (isFrozen || isStunned) return []
 
     // ── Orbital ring ──────────────────────────────────────────────────────
     if (this.orbitalRing) {
@@ -355,12 +356,10 @@ export class Enemy {
     }
 
     // ── Cast timer ────────────────────────────────────────────────────────
-    if (!isStunned) {
-      this.castTimer -= delta
-      if (this.castTimer <= 0 && this.spells.length > 0) {
-        this.castTimer = this.activeCastInterval()
-        return this.fireProjectiles(playerPos, scene)
-      }
+    this.castTimer -= delta
+    if (this.castTimer <= 0 && this.spells.length > 0) {
+      this.castTimer = this.activeCastInterval()
+      return this.fireProjectiles(playerPos, scene)
     }
 
     return []
