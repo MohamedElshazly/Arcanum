@@ -127,12 +127,21 @@ export class Game {
     this.player.hp       = this.player.maxHp
     this.player.mana     = this.player.maxMana
     this.player.position.set(0, 0.75, 0)
+    this.player.flasks    = this.player.maxFlasks
+    this.player.isHealing = false
+    this.player.healTimer = 0
 
     const seed = Math.floor(Math.random() * 0xFFFFFF)
     this.session.init(this.sceneManager.scene, this.sceneManager, seed)
 
     this.session.onEnemyDied = () => {
       this.runData.enemiesDefeated++
+      // 15% chance to drop a flask charge
+      if (Math.random() < 0.15) {
+        if (this.player.addFlask()) {
+          this.hud.pulseFlask()
+        }
+      }
     }
 
     this.projectiles   = []
@@ -173,9 +182,18 @@ export class Game {
       this.hud.onBarToggle()
     }
 
-    for (let slotIdx = 0; slotIdx < 4; slotIdx++) {
-      if (this.inputManager.isJustPressed(SLOT_KEYS[slotIdx])) {
-        this.attemptCast(slotIdx, currentTime)
+    if (!this.player.isHealing) {
+      for (let slotIdx = 0; slotIdx < 4; slotIdx++) {
+        if (this.inputManager.isJustPressed(SLOT_KEYS[slotIdx])) {
+          this.attemptCast(slotIdx, currentTime)
+        }
+      }
+
+      // Flask usage — Space key
+      if (this.inputManager.isJustPressed('Space')) {
+        if (this.player.useFlask()) {
+          this.hud.dimFlask()
+        }
       }
     }
 
