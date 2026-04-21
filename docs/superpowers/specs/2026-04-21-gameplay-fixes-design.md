@@ -72,8 +72,10 @@ Constants: `FLASK_CAST_TIME = 1.0` (seconds of vulnerable animation).
 
 ### Rest Shrine Change
 
-- `DungeonSession` rest shrine (currently +30 HP, +30 mana) changes to: refill all flask charges to `maxFlasks`, +30 mana (keep mana restore).
-- The `shrineUsed` gate remains — one use per room.
+- Remove all mid-dungeon rest shrine rooms. The only shrine room is the one immediately before the boss room.
+- That pre-boss shrine refills all flask charges to `maxFlasks` and restores +30 mana.
+- The `shrineUsed` gate remains — one use per visit.
+- In `DungeonGenerator` or `BiomeAssigner`, ensure exactly one rest/shrine room is placed as the room immediately preceding the boss room. Remove any other rest room spawns from the dungeon layout.
 
 ### HUD Display
 
@@ -100,7 +102,8 @@ On `Game.startRun()`, reset `player.flasks = player.maxFlasks`. The player alway
 | `src/entities/Player.ts` | Remove HP regen, add flask fields, heal logic, movement lock |
 | `src/core/Game.ts` | Add Space key check, pass flask drop to player on enemy death |
 | `src/ui/HUD.ts` | Add flask counter display with animations |
-| `src/dungeon/DungeonSession.ts` | Change rest shrine from HP heal to flask refill |
+| `src/dungeon/DungeonSession.ts` | Change shrine from HP heal to flask refill |
+| `src/dungeon/DungeonGenerator.ts` | Remove mid-dungeon rest rooms, ensure one shrine room before boss |
 | `styles.css` | Flask counter styles, pulse animation keyframe |
 
 ---
