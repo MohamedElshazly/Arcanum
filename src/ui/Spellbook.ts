@@ -206,10 +206,17 @@ export class Spellbook {
     subtitle.textContent = `Books absorbed: ${this.config.booksCollected ?? 0}`
     page.appendChild(subtitle)
 
-    const grid = document.createElement('div')
-    grid.className = 'spellbook-spell-grid single-column'
-    this.populateEnemyGrid(grid)
-    page.appendChild(grid)
+    if (this.config.spells.length === 0) {
+      const emptyMsg = document.createElement('div')
+      emptyMsg.className = 'spellbook-empty-msg'
+      emptyMsg.textContent = 'No spellbooks collected this run'
+      page.appendChild(emptyMsg)
+    } else {
+      const grid = document.createElement('div')
+      grid.className = 'spellbook-spell-grid single-column'
+      this.populateEnemyGrid(grid)
+      page.appendChild(grid)
+    }
   }
 
   private populateEnemyGrid(grid: HTMLElement): void {
@@ -483,7 +490,7 @@ export class Spellbook {
     // Confirm button
     const btn = document.createElement('button')
     btn.className = 'spellbook-confirm-btn'
-    btn.textContent = 'Confirm & Continue'
+    btn.textContent = 'Start New Run'
     btn.addEventListener('click', () => {
       this.config.onConfirm({
         type: 'claim_spells',

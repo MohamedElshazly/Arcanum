@@ -969,3 +969,13 @@ body {
 }
 
 .run-summary-continue-btn:hover { filter: brightness(1.15); }
+
+.spellbook-empty-msg {
+  font-family: 'Cinzel', serif;
+  font-size: 14px;
+  color: #6a5030;
+  text-align: center;
+  padding: 40px 20px;
+  font-style: italic;
+  line-height: 1.6;
+}
