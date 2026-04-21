@@ -215,7 +215,7 @@ export class Player {
 
   updateDeath(delta: number): boolean {
     this.deathTimer -= delta
-    const t = 1 - (this.deathTimer / this.deathDuration)
+    const t = Math.min(1, 1 - (this.deathTimer / this.deathDuration))
 
     // Y-scale shrinks, X/Z expand
     this.mesh.scale.set(1 + t * 1.0, 1 - t * 0.9, 1 + t * 1.0)
