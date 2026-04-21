@@ -18,12 +18,12 @@ export interface ScaledStats {
   hp: number; speed: number; castInterval: number; spellCount: number
 }
 
-const BASE_HP:    Record<EnemyArchetype, number> = { apprentice: 40, battle_mage: 80, boss: 350 }
+const BASE_HP:    Record<EnemyArchetype, number> = { apprentice: 40, battle_mage: 80, boss: 500 }
 const BASE_SPEED: Record<EnemyArchetype, number> = { apprentice: 2.5, battle_mage: 1.8, boss: 1.4 }
 
 export function scaleEnemyStats(archetype: EnemyArchetype, depth: number): ScaledStats {
-  const hpD    = Math.min(depth, 8)
-  const speedD = Math.min(depth, 6)
+  const hpD    = Math.min(depth, archetype === 'boss' ? 12 : 8)
+  const speedD = Math.min(depth, archetype === 'boss' ? 10 : 6)
   const baseInterval = archetype === 'boss' ? 2.3 : 2.0
   const minInterval  = archetype === 'boss' ? 0.8 : 0.8
   return {
@@ -205,7 +205,7 @@ export class Enemy {
     // ── Telegraph ─────────────────────────────────────────────────────────
     if (this.telegraph) {
       this.telegraph.timer += delta
-      const telegraphTime = this.archetype === 'boss' ? 1.0 : 0.6
+      const telegraphTime = 0.6
       if (this.telegraph.timer >= telegraphTime) {
         this.executeBlink(this.telegraph.destination, scene)
         this.clearTelegraph(scene)
@@ -218,7 +218,7 @@ export class Enemy {
       const currentPhase = this.phase
       if (currentPhase !== this.bossTrackedPhase) {
         this.bossTrackedPhase = currentPhase
-        this.bossPhaseBreak   = 1.5
+        this.bossPhaseBreak   = 0.6
       }
       if (this.bossPhaseBreak > 0) {
         this.bossPhaseBreak -= delta
@@ -247,8 +247,8 @@ export class Enemy {
       if (this.bossQueueTimer <= 0) {
         const next   = this.bossQueue.shift()!
         const origin = this.position.clone().setY(0.75)
-        const mod    = { ...next.spell, damage: Math.round(next.spell.damage * 0.60) }
-        this.bossQueueTimer = 0.8
+        const mod    = { ...next.spell, damage: Math.round(next.spell.damage * 0.75) }
+        this.bossQueueTimer = 0.5
         return [new Projectile(origin, next.dir, mod, scene)]
       }
       return []
@@ -269,9 +269,9 @@ export class Enemy {
   private activeCastInterval(): number {
     if (this.archetype !== 'boss') return this.stats.castInterval
     switch (this.phase) {
-      case 1: return this.stats.castInterval
-      case 2: return this.stats.castInterval * 0.65
-      case 3: return this.stats.castInterval * 0.35
+      case 1: return this.stats.castInterval * 0.85
+      case 2: return this.stats.castInterval * 0.55
+      case 3: return this.stats.castInterval * 0.30
     }
   }
 
@@ -288,7 +288,7 @@ export class Enemy {
 
     if (this.archetype === 'boss') {
       const targetDist = this.phase === 3 ? 4 : this.phase === 2 ? 7 : 10
-      const spd = this.phase === 3 ? this.stats.speed * 1.8 : this.stats.speed
+      const spd = this.phase === 3 ? this.stats.speed * 2.2 : this.stats.speed
       const dir = new THREE.Vector3().subVectors(playerPos, this.position).setY(0).normalize()
       const perp = new THREE.Vector3(-dir.z, 0, dir.x)
 
@@ -463,7 +463,7 @@ export class Enemy {
 
     // Boss: populate queue, drain sequentially at 0.8s intervals
     if (this.bossQueue.length > 0) return []  // already draining
-    const spreadCount = this.phase === 1 ? 1 : this.phase === 2 ? 3 : 5
+    const spreadCount = this.phase === 1 ? 2 : this.phase === 2 ? 4 : 7
     const spreadAngle = Math.PI / 10
     for (let i = 0; i < spreadCount; i++) {
       const offset = (i - Math.floor(spreadCount / 2)) * spreadAngle
