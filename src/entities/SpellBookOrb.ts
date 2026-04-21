@@ -126,6 +126,8 @@ export class SpellBookOrb {
     return [...this.spellIds]
   }
 
+  get ownedSpellIds(): string[] { return [...this.spellIds] }
+
   getElement(): SpellElement { return this.element }
 
   dispose(scene: THREE.Scene): void {

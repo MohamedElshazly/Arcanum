@@ -5,7 +5,7 @@ export class SceneManager {
   readonly scene       = new THREE.Scene()
   readonly renderer    = new THREE.WebGLRenderer({ antialias: true })
   readonly camera:     THREE.OrthographicCamera
-  readonly ambientLight = new THREE.AmbientLight(0xffffff, 0.6)
+  readonly ambientLight = new THREE.AmbientLight(0xffffff, 1.4)
 
   private _cameraAngle = 0
   private readonly CAM_RADIUS = 14
@@ -26,9 +26,9 @@ export class SceneManager {
     this.camera.position.set(0, 20, 14)
     this.camera.lookAt(0, 0, 0)
 
-    const directional = new THREE.DirectionalLight(0xfff5e0, 0.8)
+    const directional = new THREE.DirectionalLight(0xfff5e0, 1.5)
     directional.position.set(-10, 20, 10)
-    const fillLight = new THREE.DirectionalLight(0xffffff, 0.6)
+    const fillLight = new THREE.DirectionalLight(0xffffff, 1.1)
     fillLight.position.set(5, 10, 5)
     this.scene.add(this.ambientLight, directional, fillLight)
 

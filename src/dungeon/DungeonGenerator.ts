@@ -19,7 +19,7 @@ export interface RoomData {
 }
 
 export interface EnemySpawnData {
-  archetype: 'apprentice' | 'battle_mage' | 'boss'
+  archetype: 'apprentice' | 'battle_mage' | 'warlock' | 'boss'
   spellIds: string[]
   position: { x: number; z: number }
   depth: number

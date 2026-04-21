@@ -1,7 +1,7 @@
 import * as THREE         from 'three'
 import { Spell }          from '../spells/SpellDefinitions'
 import { TrailSystem }    from '../fx/TrailSystem'
-import type { RoomBounds } from '../dungeon/Room'
+import type { RoomBounds, Obstacle } from '../dungeon/Room'
 import { isOutOfBounds }  from '../utils/CollisionUtils'
 
 export class Projectile {
@@ -66,7 +66,7 @@ export class Projectile {
     this.trail = new TrailSystem(spell.color, scene)
   }
 
-  update(delta: number, bounds: RoomBounds, scene: THREE.Scene): void {
+  update(delta: number, bounds: RoomBounds, scene: THREE.Scene, obstacles: readonly Obstacle[] = []): void {
     if (!this.alive) return
     this.elapsedTime += delta
 
@@ -103,6 +103,17 @@ export class Projectile {
     }
 
     this.trail.update(this.mesh.position)
+
+    // ── Obstacle collision ─────────────────────────────────────────────────
+    const projRadius = Math.max(this.spell.projectileScale.x, this.spell.projectileScale.z) * 0.25
+    for (const obs of obstacles) {
+      const dx = this.mesh.position.x - obs.x
+      const dz = this.mesh.position.z - obs.z
+      if (dx * dx + dz * dz < (obs.r + projRadius) * (obs.r + projRadius)) {
+        this.destroy(scene)
+        return
+      }
+    }
 
     // ── Range / bounds check ────────────────────────────────────────────────
     const travelled = this.mesh.position.distanceTo(this.origin)

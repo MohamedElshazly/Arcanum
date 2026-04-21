@@ -105,6 +105,7 @@ export class Game {
   private showLoadoutScreen(): void {
     if (this.rafId) cancelAnimationFrame(this.rafId)
     this.running = false
+    this.inputManager.captureWheel = false
 
     this.loadoutScreen = new LoadoutScreen({
       root:           document.getElementById('loadout-root') as HTMLDivElement,
@@ -122,6 +123,8 @@ export class Game {
     if (this.loadoutScreen) { this.loadoutScreen.dispose(); this.loadoutScreen = null }
 
     this.spellBar.loadFromLoadout(this.inventory.activeLoadout)
+    this.spellBar.activeBar = 1
+    this.spellCaster.clearCooldowns()
     this.runData.reset()
 
     this.player.hp       = this.player.maxHp
@@ -144,11 +147,16 @@ export class Game {
       }
     }
 
+    this.session.onOrbCollected = (spellIds) => {
+      this.runData.recordBookCollected(spellIds)
+    }
+
     this.projectiles   = []
     this.activeEffects = []
     this.lastRoomCleared = false
 
     this.running = true
+    this.inputManager.captureWheel = true
     this.clock.start()
     this.rafId = requestAnimationFrame(this.loop)
   }
@@ -214,14 +222,6 @@ export class Game {
     }
     this.lastRoomCleared = roomNowCleared
 
-    // Check orb collection
-    for (const orb of this.session.activeOrbs) {
-      if (orb.collected) {
-        const spellIds = orb.collect()
-        this.runData.recordBookCollected(spellIds)
-      }
-    }
-
     // Homing targets
     for (const proj of this.projectiles) {
       if (proj.spell.id === 'arcane_missile') {
@@ -232,7 +232,7 @@ export class Game {
 
     const bounds = this.session.activeRoomBounds
     for (const proj of this.projectiles) {
-      proj.update(delta, bounds, this.sceneManager.scene)
+      proj.update(delta, bounds, this.sceneManager.scene, this.session.activeRoomObstacles)
     }
 
     this.checkProjectileCollisions(currentTime)
@@ -315,6 +315,7 @@ export class Game {
 
   private showRewardPhase(spellPool: string[]): void {
     if (this.runSummaryScreen) { this.runSummaryScreen.dispose(); this.runSummaryScreen = null }
+    this.inputManager.captureWheel = false
 
     const root = document.getElementById('loadout-root') as HTMLDivElement
 

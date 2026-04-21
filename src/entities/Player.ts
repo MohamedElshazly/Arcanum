@@ -105,6 +105,7 @@ export class Player {
   }
 
   takeDamage(amount: number): void {
+    if (import.meta.env.DEV) return
     this.hp = Math.max(0, this.hp - amount)
   }
 

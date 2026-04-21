@@ -62,7 +62,11 @@ export class InputManager {
     this.pendingReleased.add(code)
   }
 
+  /** When true, wheel events are captured for camera rotation. Set to false during UI screens. */
+  captureWheel = true
+
   private onWheel = (e: WheelEvent): void => {
+    if (!this.captureWheel) return
     e.preventDefault()
     this._wheelDelta += e.deltaY * 0.003
   }

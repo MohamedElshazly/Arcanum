@@ -38,8 +38,11 @@ export class DungeonSession {
   private overlay:          HTMLElement | null = null
   private shrineUsed        = false
 
-  /** Called when an enemy dies and an orb is ready. Game.ts wires this up. */
-  onEnemyDied: ((spellIds: string[], element: import('../spells/SpellDefinitions').SpellElement, position: THREE.Vector3) => void) | null = null
+  /** Called when an enemy dies. Game.ts wires this up. */
+  onEnemyDied: (() => void) | null = null
+
+  /** Called when a spellbook orb is collected by the player. */
+  onOrbCollected: ((spellIds: string[]) => void) | null = null
 
   init(scene: THREE.Scene, sm: SceneManager, seed: number): void {
     this.sm       = sm
@@ -120,7 +123,7 @@ export class DungeonSession {
     this.enemies = this.enemies.filter(e => e.alive)
 
     for (const p of this.enemyProjectiles) {
-      p.update(delta, this.activeRoom.bounds, scene)
+      p.update(delta, this.activeRoom.bounds, scene, this.activeRoom.obstacles)
     }
     this.checkEnemyProjectilePlayerCollisions(player, scene)
     this.enemyProjectiles = this.enemyProjectiles.filter(p => p.alive)
@@ -130,7 +133,10 @@ export class DungeonSession {
       orb.update(delta, player.position)
     }
     for (const orb of this.orbs) {
-      if (orb.collected) orb.dispose(scene)
+      if (orb.collected) {
+        this.onOrbCollected?.(orb.ownedSpellIds)
+        orb.dispose(scene)
+      }
     }
     this.orbs = this.orbs.filter(o => !o.collected)
 
@@ -143,6 +149,7 @@ export class DungeonSession {
 
     if (this.activeRoomData.type === 'rest' && !this.shrineUsed) {
       if (player.position.distanceTo(new THREE.Vector3(0, 0, 0)) < 2) {
+        player.hp     = player.maxHp
         player.flasks = player.maxFlasks
         player.mana   = Math.min(player.maxMana, player.mana + 30)
         this.shrineUsed = true
@@ -169,7 +176,7 @@ export class DungeonSession {
       scene,
     )
     this.orbs.push(orb)
-    this.onEnemyDied?.(enemy.ownedSpellIds, enemy.dominantElement, enemy.position.clone())
+    this.onEnemyDied?.()
   }
 
   private commitTransition(player: Player, scene: THREE.Scene): void {
@@ -236,7 +243,7 @@ export class DungeonSession {
     const mat = player.mesh.material as THREE.MeshStandardMaterial
     mat.emissive.set(0x00ff44)
     mat.emissiveIntensity = 1
-    setTimeout(() => { mat.emissive.set(0x000000); mat.emissiveIntensity = 0 }, 300)
+    setTimeout(() => { mat.emissive.set(0x222222); mat.emissiveIntensity = 0 }, 300)
   }
 
   private showBiomeDescription(room: RoomData): void {

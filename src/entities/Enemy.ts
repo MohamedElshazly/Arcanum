@@ -4,7 +4,7 @@ import type { Spell } from '../spells/SpellDefinitions'
 import { Projectile } from './Projectile'
 import type { RoomBounds, Obstacle } from '../dungeon/Room'
 
-export type EnemyArchetype = 'apprentice' | 'battle_mage' | 'boss'
+export type EnemyArchetype = 'apprentice' | 'battle_mage' | 'warlock' | 'boss'
 
 export interface EnemyConfig {
   archetype: EnemyArchetype
@@ -18,14 +18,14 @@ export interface ScaledStats {
   hp: number; speed: number; castInterval: number; spellCount: number
 }
 
-const BASE_HP:    Record<EnemyArchetype, number> = { apprentice: 40, battle_mage: 80, boss: 500 }
-const BASE_SPEED: Record<EnemyArchetype, number> = { apprentice: 2.5, battle_mage: 1.8, boss: 1.4 }
+const BASE_HP:    Record<EnemyArchetype, number> = { apprentice: 40, battle_mage: 80, warlock: 100, boss: 500 }
+const BASE_SPEED: Record<EnemyArchetype, number> = { apprentice: 2.5, battle_mage: 1.8, warlock: 2.2, boss: 1.4 }
 
 export function scaleEnemyStats(archetype: EnemyArchetype, depth: number): ScaledStats {
   const hpD    = Math.min(depth, archetype === 'boss' ? 12 : 8)
   const speedD = Math.min(depth, archetype === 'boss' ? 10 : 6)
-  const baseInterval = archetype === 'boss' ? 2.3 : 2.0
-  const minInterval  = archetype === 'boss' ? 0.8 : 0.8
+  const baseInterval = archetype === 'boss' ? 2.3 : archetype === 'warlock' ? 1.6 : 2.0
+  const minInterval  = archetype === 'boss' ? 0.8 : archetype === 'warlock' ? 0.6 : 0.8
   return {
     hp:           Math.round(BASE_HP[archetype] * Math.pow(1.15, hpD)),
     speed:        BASE_SPEED[archetype] * Math.pow(1.05, speedD),
@@ -85,8 +85,7 @@ export class Enemy {
     this.hp        = this.stats.hp
     this.maxHp     = this.stats.hp
 
-    this.aggressionRange = config.archetype === 'boss' ? 9999
-      : config.depth <= 2 ? 8 : config.depth <= 4 ? 12 : 9999
+    this.aggressionRange = 9999
 
     this.spells = config.spellIds.map(id => SPELLS[id]).filter(Boolean)
 
@@ -108,6 +107,17 @@ export class Enemy {
       })
       this.orbitalRing = new THREE.Mesh(ringGeo, ringMat)
       this.mesh.add(this.orbitalRing)
+    } else if (config.archetype === 'warlock') {
+      // Triangle shape — cone with 3 radial segments
+      const geo = new THREE.ConeGeometry(0.7, 2.0, 3)
+      const color = this.dominantColor()
+      const mat = new THREE.MeshStandardMaterial({
+        color,
+        emissive:          new THREE.Color(color).multiplyScalar(0.6),
+        emissiveIntensity: 1.8,
+      })
+      this.mesh = new THREE.Mesh(geo, mat)
+      this.mesh.position.set(config.x, 1.0, config.z)
     } else {
       const isLarge = config.archetype === 'battle_mage'
       const geo     = new THREE.BoxGeometry(0.8, isLarge ? 1.8 : 1.2, 0.8)
@@ -248,7 +258,7 @@ export class Enemy {
         const next   = this.bossQueue.shift()!
         const origin = this.position.clone().setY(0.75)
         const mod    = { ...next.spell, damage: Math.round(next.spell.damage * 0.75) }
-        this.bossQueueTimer = 0.5
+        this.bossQueueTimer = this.phase === 3 ? 0.15 : this.phase === 2 ? 0.25 : 0.4
         return [new Projectile(origin, next.dir, mod, scene)]
       }
       return []
@@ -270,8 +280,8 @@ export class Enemy {
     if (this.archetype !== 'boss') return this.stats.castInterval
     switch (this.phase) {
       case 1: return this.stats.castInterval * 0.85
-      case 2: return this.stats.castInterval * 0.55
-      case 3: return this.stats.castInterval * 0.30
+      case 2: return this.stats.castInterval * 0.50
+      case 3: return this.stats.castInterval * 0.22
     }
   }
 
@@ -287,8 +297,8 @@ export class Enemy {
     let dx = 0, dz = 0
 
     if (this.archetype === 'boss') {
-      const targetDist = this.phase === 3 ? 4 : this.phase === 2 ? 7 : 10
-      const spd = this.phase === 3 ? this.stats.speed * 2.2 : this.stats.speed
+      const targetDist = this.phase === 3 ? 3 : this.phase === 2 ? 6 : 10
+      const spd = this.phase === 3 ? this.stats.speed * 2.5 : this.phase === 2 ? this.stats.speed * 1.5 : this.stats.speed
       const dir = new THREE.Vector3().subVectors(playerPos, this.position).setY(0).normalize()
       const perp = new THREE.Vector3(-dir.z, 0, dir.x)
 
@@ -314,6 +324,20 @@ export class Enemy {
       }
       dx += perp.x * this.stats.speed * 0.4 * delta
       dz += perp.z * this.stats.speed * 0.4 * delta
+
+    } else if (this.archetype === 'warlock') {
+      // Warlocks strafe aggressively and maintain medium range
+      const dir  = new THREE.Vector3().subVectors(playerPos, this.position).setY(0).normalize()
+      const perp = new THREE.Vector3(-dir.z, 0, dir.x)
+      if (dist < 4) {
+        dx = -dir.x * this.stats.speed * delta
+        dz = -dir.z * this.stats.speed * delta
+      } else if (dist > 7) {
+        dx = dir.x * this.stats.speed * 1.3 * delta
+        dz = dir.z * this.stats.speed * 1.3 * delta
+      }
+      dx += perp.x * this.stats.speed * 0.6 * delta
+      dz += perp.z * this.stats.speed * 0.6 * delta
 
     } else {
       if (dist > 0.5) {
@@ -383,6 +407,7 @@ export class Enemy {
     }
     if (this.archetype === 'apprentice' && this.depth >= 5) return this.hp / this.maxHp < 0.3
     if (this.archetype === 'battle_mage' && this.depth >= 4) return dist < 3
+    if (this.archetype === 'warlock') return dist < 3 || this.hp / this.maxHp < 0.4
     return false
   }
 
@@ -396,7 +421,7 @@ export class Enemy {
       return dest
     }
     const away = new THREE.Vector3().subVectors(this.position, playerPos).setY(0).normalize()
-    const d    = this.archetype === 'battle_mage' && this.depth >= 6 ? -6 : 6
+    const d    = (this.archetype === 'battle_mage' || this.archetype === 'warlock') && this.depth >= 6 ? -6 : 6
     const dest = this.position.clone().addScaledVector(away, d)
     dest.x = Math.max(bounds.minX + 1, Math.min(bounds.maxX - 1, dest.x))
     dest.z = Math.max(bounds.minZ + 1, Math.min(bounds.maxZ - 1, dest.z))
@@ -449,7 +474,7 @@ export class Enemy {
   // ── Projectile firing ─────────────────────────────────────────────────────
 
   private fireProjectiles(playerPos: THREE.Vector3, scene: THREE.Scene): Projectile[] {
-    const castable = this.spells.filter(s => s.id !== 'blink' && s.type === 'projectile')
+    const castable = this.spells.filter(s => s.id !== 'blink' && s.id !== 'ice_wall' && s.id !== 'mana_siphon' && s.id !== 'static_field')
     if (!castable.length) return []
     const spell  = castable[Math.floor(Math.random() * castable.length)]
     const base   = new THREE.Vector3().subVectors(playerPos, this.position).setY(0).normalize()
@@ -458,18 +483,56 @@ export class Enemy {
       const dmg = Math.round(spell.damage * 0.65 * (1 + 0.08 * Math.min(this.depth, 8)))
       const mod  = { ...spell, damage: dmg }
       const origin = this.position.clone().setY(0.75)
+      if (this.archetype === 'warlock') {
+        // Warlocks fire double projectiles in a slight spread
+        const left  = base.clone().applyAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI / 16)
+        const right = base.clone().applyAxisAngle(new THREE.Vector3(0, 1, 0), -Math.PI / 16)
+        return [
+          new Projectile(origin.clone(), left, mod, scene),
+          new Projectile(origin.clone(), right, mod, scene),
+        ]
+      }
       return [new Projectile(origin, base, mod, scene)]
     }
 
-    // Boss: populate queue, drain sequentially at 0.8s intervals
+    // Boss: populate queue, drain sequentially
     if (this.bossQueue.length > 0) return []  // already draining
-    const spreadCount = this.phase === 1 ? 2 : this.phase === 2 ? 4 : 7
-    const spreadAngle = Math.PI / 10
-    for (let i = 0; i < spreadCount; i++) {
-      const offset = (i - Math.floor(spreadCount / 2)) * spreadAngle
-      const dir    = base.clone().applyAxisAngle(new THREE.Vector3(0, 1, 0), offset)
-      this.bossQueue.push({ spell, dir })
+
+    if (this.phase === 1) {
+      // Phase 1: single-target with boosted damage
+      const spreadCount = 2
+      const spreadAngle = Math.PI / 10
+      const dmgMod = { ...spell, damage: Math.round(spell.damage * 1.3) }
+      for (let i = 0; i < spreadCount; i++) {
+        const offset = (i - Math.floor(spreadCount / 2)) * spreadAngle
+        const dir    = base.clone().applyAxisAngle(new THREE.Vector3(0, 1, 0), offset)
+        this.bossQueue.push({ spell: dmgMod, dir })
+      }
+    } else if (this.phase === 2) {
+      // Phase 2: modified spells — triple bursts with wider spread
+      const burstCount = 3
+      const burstAngle = Math.PI / 6
+      for (let b = 0; b < burstCount; b++) {
+        const burstOffset = (b - 1) * burstAngle
+        const burstDir = base.clone().applyAxisAngle(new THREE.Vector3(0, 1, 0), burstOffset)
+        // Each burst fires 3 projectiles in a tight fan
+        for (let i = -1; i <= 1; i++) {
+          const dir = burstDir.clone().applyAxisAngle(new THREE.Vector3(0, 1, 0), i * (Math.PI / 20))
+          this.bossQueue.push({ spell, dir })
+        }
+      }
+    } else {
+      // Phase 3: massive barrage
+      const spreadCount = 9
+      const spreadAngle = Math.PI / 12
+      const dmgMod = { ...spell, damage: Math.round(spell.damage * 0.85) }
+      for (let i = 0; i < spreadCount; i++) {
+        const offset = (i - Math.floor(spreadCount / 2)) * spreadAngle
+        const dir    = base.clone().applyAxisAngle(new THREE.Vector3(0, 1, 0), offset)
+        this.bossQueue.push({ spell: dmgMod, dir })
+      }
     }
+
     this.bossQueueTimer = 0
     return []
   }

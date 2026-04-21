@@ -1,6 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { Spellbook } from '../src/ui/Spellbook'
-import { SPELLS } from '../src/spells/SpellDefinitions'
 
 function mockInventory(pool: string[] = ['fireball', 'frost_bolt', 'spark', 'arcane_missile']) {
   return {

@@ -48,13 +48,15 @@ function generateEnemies(room: RoomData, element: SpellElement, rng: () => numbe
 
   let apprentices  = 0
   let battleMages  = 0
+  let warlocks     = 0
 
   if (d <= 2)      { apprentices = elite ? 3 : 2 }
   else if (d <= 4) { apprentices = elite ? 2 : 1; battleMages = elite ? 2 : 1 }
-  else             { apprentices = elite ? 2 : 1; battleMages = elite ? 3 : 2 }
+  else if (d <= 6) { apprentices = elite ? 2 : 1; battleMages = elite ? 3 : 2; warlocks = elite ? 1 : 0 }
+  else             { apprentices = elite ? 2 : 1; battleMages = elite ? 3 : 2; warlocks = elite ? 2 : 1 }
 
   const spellCount = d <= 2 ? 2 : d <= 4 ? 3 : 4
-  const total      = apprentices + battleMages
+  const total      = apprentices + battleMages + warlocks
   const positions  = enemyPositions(total, rng)
   const enemies: EnemySpawnData[] = []
 
@@ -71,6 +73,14 @@ function generateEnemies(room: RoomData, element: SpellElement, rng: () => numbe
       archetype: 'battle_mage',
       spellIds:  pickSpells(element, spellCount, d, rng),
       position:  positions[apprentices + i],
+      depth: d,
+    })
+  }
+  for (let i = 0; i < warlocks; i++) {
+    enemies.push({
+      archetype: 'warlock',
+      spellIds:  pickSpells(element, spellCount, d, rng),
+      position:  positions[apprentices + battleMages + i],
       depth: d,
     })
   }
@@ -94,9 +104,6 @@ export function assignBiomes(dungeon: DungeonData, rng: () => number): void {
     }
   }
 
-  const dominant: SpellElement = ELEMENTS[Math.floor(rng() * ELEMENTS.length)]
-  const dominantBiome = ELEMENT_TO_BIOME[dominant]
-
   for (const room of dungeon.rooms) {
     if (room.type === 'boss') {
       room.biome = 'void'; room.hazardCount = 3; continue
@@ -109,16 +116,25 @@ export function assignBiomes(dungeon: DungeonData, rng: () => number): void {
     if (d === 0) {
       room.biome = 'stone'; room.hazardCount = 0
     } else if (d <= 2) {
-      room.biome       = rng() < 0.8 ? 'stone' : dominantBiome
+      // Early rooms: mix of stone and random elements
+      if (rng() < 0.4) {
+        room.biome = 'stone'
+      } else {
+        const el = ELEMENTS[Math.floor(rng() * ELEMENTS.length)]
+        room.biome = ELEMENT_TO_BIOME[el]
+      }
       room.hazardCount = 0
     } else if (d <= 4) {
-      room.biome       = dominantBiome
+      const el = ELEMENTS[Math.floor(rng() * ELEMENTS.length)]
+      room.biome       = ELEMENT_TO_BIOME[el]
       room.hazardCount = room.type === 'elite' ? 3 : 1
     } else if (d <= 6) {
-      room.biome       = dominantBiome
+      const el = ELEMENTS[Math.floor(rng() * ELEMENTS.length)]
+      room.biome       = ELEMENT_TO_BIOME[el]
       room.hazardCount = room.type === 'elite' ? 3 : 2
     } else {
-      room.biome       = dominantBiome
+      const el = ELEMENTS[Math.floor(rng() * ELEMENTS.length)]
+      room.biome       = ELEMENT_TO_BIOME[el]
       room.hazardCount = 3
     }
     if (room.type === 'elite') room.hazardCount = 3
@@ -128,11 +144,19 @@ export function assignBiomes(dungeon: DungeonData, rng: () => number): void {
     if (room.type === 'start' || room.type === 'rest') {
       room.enemies = []; continue
     }
-    const el: SpellElement = room.biome === 'stone' ? dominant : (room.biome as SpellElement)
+    const el: SpellElement = room.biome === 'stone' || room.biome === 'void'
+      ? ELEMENTS[Math.floor(rng() * ELEMENTS.length)]
+      : (room.biome as SpellElement)
     if (room.type === 'boss') {
+      // Boss gets spells from multiple elements
+      const bossSpells: string[] = []
+      for (const e of ELEMENTS) {
+        const pool = ELEMENT_SPELLS[e].filter(s => !bossSpells.includes(s))
+        if (pool.length > 0) bossSpells.push(pool[Math.floor(rng() * pool.length)])
+      }
       room.enemies = [{
         archetype: 'boss',
-        spellIds:  pickSpells(dominant, 4, room.depth, rng),
+        spellIds:  bossSpells,
         position:  { x: 0, z: -4 },
         depth:     room.depth,
       }]

@@ -33,6 +33,10 @@ export class SpellCaster {
     this.grimoire = grimoire
   }
 
+  clearCooldowns(): void {
+    this.cooldowns.clear()
+  }
+
   canCast(spell: Spell, currentMana: number, currentTime: number): boolean {
     if (currentMana < this.effectiveCost(spell)) return false
     return this.getCooldownRemaining(spell.id, currentTime) <= 0
