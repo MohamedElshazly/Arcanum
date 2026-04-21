@@ -177,12 +177,12 @@ export class Game {
     const wheelDelta = this.inputManager.consumeWheelDelta()
     if (wheelDelta !== 0) this.sceneManager.rotateCamera(wheelDelta)
 
-    if (this.inputManager.isJustPressed('Tab')) {
-      this.spellBar.toggleBar()
-      this.hud.onBarToggle()
-    }
-
     if (!this.player.isHealing) {
+      if (this.inputManager.isJustPressed('Tab')) {
+        this.spellBar.toggleBar()
+        this.hud.onBarToggle()
+      }
+
       for (let slotIdx = 0; slotIdx < 4; slotIdx++) {
         if (this.inputManager.isJustPressed(SLOT_KEYS[slotIdx])) {
           this.attemptCast(slotIdx, currentTime)

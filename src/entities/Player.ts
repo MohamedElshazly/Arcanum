@@ -58,7 +58,7 @@ export class Player {
         this.healTimer = 0
         // Remove green tint
         const mat = this.mesh.material as THREE.MeshStandardMaterial
-        mat.emissive.set(0x000000)
+        mat.emissive.set(0x222222)
       }
       return  // Cannot move or act while healing
     }
