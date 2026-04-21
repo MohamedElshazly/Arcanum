@@ -13,7 +13,6 @@ export interface RunSummaryConfig {
 export class RunSummaryScreen {
   private root:       HTMLDivElement
   private config:     RunSummaryConfig
-  private timerId:    ReturnType<typeof setInterval> | null = null
 
   constructor(config: RunSummaryConfig) {
     this.root    = config.root
@@ -70,7 +69,6 @@ export class RunSummaryScreen {
   }
 
   private doContinue(): void {
-    if (this.timerId !== null) { clearInterval(this.timerId); this.timerId = null }
     const collectedPool = this.config.runData.getCollectedSpellPool()
     this.dispose()
     this.config.onContinue(collectedPool)
@@ -83,7 +81,6 @@ export class RunSummaryScreen {
   }
 
   dispose(): void {
-    if (this.timerId !== null) { clearInterval(this.timerId); this.timerId = null }
     this.root.classList.remove('visible')
     this.root.innerHTML = ''
   }
