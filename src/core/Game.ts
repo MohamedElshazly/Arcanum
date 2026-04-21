@@ -397,13 +397,13 @@ export class Game {
         castBlink(this.player.position, this.player.mesh, this.player.lastDirection)
         break
       case 'frozen_nova':
-        this.activeEffects.push(new FrozenNovaEffect(pos, enemies, SPELLS.frozen_nova.damage, scene))
+        this.activeEffects.push(new FrozenNovaEffect(pos, enemies, SPELLS.frozen_nova.damage, scene, SPELLS.frozen_nova.statusEffect))
         break
       case 'ice_wall':
         this.activeEffects.push(new IceWallEffect(pos, direction, scene))
         break
       case 'thunder_clap':
-        this.activeEffects.push(new ThunderClapEffect(pos, enemies, SPELLS.thunder_clap.damage, SPELLS.thunder_clap.radius ?? 5, scene))
+        this.activeEffects.push(new ThunderClapEffect(pos, enemies, SPELLS.thunder_clap.damage, SPELLS.thunder_clap.radius ?? 5, scene, SPELLS.thunder_clap.statusEffect))
         break
       case 'arcane_explosion':
         this.activeEffects.push(new ArcaneExplosionEffect(pos, enemies, SPELLS.arcane_explosion.damage, SPELLS.arcane_explosion.radius ?? 6, scene))
@@ -451,11 +451,13 @@ export class Game {
             if (dx * dx + dz * dz <= r2) {
               other.takeDamage(proj.damage, this.sceneManager.scene)
               this.runData.damageDealt += proj.damage
+              if (proj.spell.statusEffect) other.applyStatusEffect(proj.spell.statusEffect)
             }
           }
         } else {
           enemy.takeDamage(proj.damage, this.sceneManager.scene)
           this.runData.damageDealt += proj.damage
+          if (proj.spell.statusEffect) enemy.applyStatusEffect(proj.spell.statusEffect)
         }
 
         if (proj.spell.element === 'ice') {

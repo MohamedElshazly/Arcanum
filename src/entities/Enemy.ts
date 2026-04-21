@@ -1,6 +1,6 @@
 import * as THREE  from 'three'
 import { SPELLS }  from '../spells/SpellDefinitions'
-import type { Spell } from '../spells/SpellDefinitions'
+import type { Spell, StatusEffect, StatusEffectType } from '../spells/SpellDefinitions'
 import { Projectile } from './Projectile'
 import type { RoomBounds, Obstacle } from '../dungeon/Room'
 
@@ -49,6 +49,13 @@ interface BlinkTelegraph {
   isCharge:    boolean
 }
 
+interface ActiveStatusEffect {
+  type:       StatusEffectType
+  remaining:  number
+  value?:     number
+  tickTimer?: number
+}
+
 export class Enemy {
   readonly mesh:     THREE.Mesh
   readonly position: THREE.Vector3
@@ -68,6 +75,10 @@ export class Enemy {
   private orbitalRing:        THREE.Mesh | null = null
   private orbitalAngle        = 0
   private blinkCooldown       = 0
+
+  // Status effects
+  private statusEffects: ActiveStatusEffect[] = []
+  private readonly originalEmissive: THREE.Color
 
   // Death animation
   private dying      = false
@@ -132,8 +143,23 @@ export class Enemy {
       this.mesh.position.set(config.x, isLarge ? 0.9 : 0.6, config.z)
     }
 
+    this.originalEmissive = (this.mesh.material as THREE.MeshStandardMaterial).emissive.clone()
     this.position  = this.mesh.position
     this.castTimer = Math.random() * this.stats.castInterval
+  }
+
+  applyStatusEffect(effect: StatusEffect): void {
+    const existing = this.statusEffects.find(e => e.type === effect.type)
+    if (existing) {
+      existing.remaining = effect.duration
+      existing.value     = effect.value
+    } else {
+      this.statusEffects.push({
+        type:      effect.type,
+        remaining: effect.duration,
+        value:     effect.value,
+      })
+    }
   }
 
   get isBoss(): boolean { return this.archetype === 'boss' }
@@ -199,6 +225,66 @@ export class Enemy {
     // ── Blink cooldown tick ──────────────────────────────────────────────
     if (this.blinkCooldown > 0) this.blinkCooldown -= delta
 
+    // ── Status effect processing ─────────────────────────────────────────
+    let speedMult  = 1.0
+    let isFrozen   = false
+    let isStunned  = false
+
+    for (const fx of this.statusEffects) {
+      switch (fx.type) {
+        case 'burning': {
+          const dmg = (fx.value ?? 5) * delta
+          this.hp -= dmg
+          break
+        }
+        case 'slow':
+          speedMult *= (1 - (fx.value ?? 0.5))
+          break
+        case 'freeze':
+          isFrozen = true
+          break
+        case 'stun':
+          isStunned = true
+          break
+        case 'knockback': {
+          const away = new THREE.Vector3()
+            .subVectors(this.position, playerPos)
+            .setY(0)
+            .normalize()
+          this.position.x += away.x * (fx.value ?? 5)
+          this.position.z += away.z * (fx.value ?? 5)
+          fx.remaining = 0
+          break
+        }
+      }
+    }
+
+    // Tick down durations and remove expired
+    for (const fx of this.statusEffects) fx.remaining -= delta
+    this.statusEffects = this.statusEffects.filter(fx => fx.remaining > 0)
+
+    // Kill check after burning damage
+    if (this.hp <= 0 && !this.dying) {
+      this.startDying(scene)
+      return []
+    }
+
+    // Visual feedback — emissive tint based on highest-priority active effect
+    const mat = this.mesh.material as THREE.MeshStandardMaterial
+    const freezeActive  = this.statusEffects.some(fx => fx.type === 'freeze')
+    const burnActive    = this.statusEffects.some(fx => fx.type === 'burning')
+    const stunActive    = this.statusEffects.some(fx => fx.type === 'stun')
+    const slowActive    = this.statusEffects.some(fx => fx.type === 'slow')
+
+    if (freezeActive)       mat.emissive.setHex(0x00ccff)
+    else if (burnActive)    mat.emissive.setHex(0xff6600)
+    else if (stunActive)    mat.emissive.setHex(0xffffff)
+    else if (slowActive)    mat.emissive.setHex(0x4444ff)
+    else                    mat.emissive.copy(this.originalEmissive)
+
+    // Freeze: skip all AI
+    if (isFrozen) return []
+
     // ── Orbital ring ──────────────────────────────────────────────────────
     if (this.orbitalRing) {
       this.orbitalAngle += delta * (0.8 + (this.phase - 1) * 1.0)
@@ -253,7 +339,7 @@ export class Enemy {
     }
 
     // ── Movement with steering ────────────────────────────────────────────
-    this.moveToward(delta, playerPos, dist, bounds, obstacles)
+    this.moveToward(delta, playerPos, dist, bounds, obstacles, speedMult)
 
     // ── Boss queued cast drain ────────────────────────────────────────────
     if (this.archetype === 'boss' && this.bossQueue.length > 0) {
@@ -269,10 +355,12 @@ export class Enemy {
     }
 
     // ── Cast timer ────────────────────────────────────────────────────────
-    this.castTimer -= delta
-    if (this.castTimer <= 0 && this.spells.length > 0) {
-      this.castTimer = this.activeCastInterval()
-      return this.fireProjectiles(playerPos, scene)
+    if (!isStunned) {
+      this.castTimer -= delta
+      if (this.castTimer <= 0 && this.spells.length > 0) {
+        this.castTimer = this.activeCastInterval()
+        return this.fireProjectiles(playerPos, scene)
+      }
     }
 
     return []
@@ -297,57 +385,58 @@ export class Enemy {
     dist: number,
     bounds: RoomBounds,
     obstacles: readonly Obstacle[],
+    speedMult = 1.0,
   ): void {
     let dx = 0, dz = 0
+    const spd = this.stats.speed * speedMult
 
     if (this.archetype === 'boss') {
       const targetDist = this.phase === 3 ? 3 : this.phase === 2 ? 6 : 10
-      const spd = this.phase === 3 ? this.stats.speed * 2.5 : this.phase === 2 ? this.stats.speed * 1.5 : this.stats.speed
+      const phaseSpd = this.phase === 3 ? spd * 2.5 : this.phase === 2 ? spd * 1.5 : spd
       const dir = new THREE.Vector3().subVectors(playerPos, this.position).setY(0).normalize()
       const perp = new THREE.Vector3(-dir.z, 0, dir.x)
 
       if (dist < targetDist - 1) {
-        dx = -dir.x * this.stats.speed * delta
-        dz = -dir.z * this.stats.speed * delta
+        dx = -dir.x * spd * delta
+        dz = -dir.z * spd * delta
       } else if (dist > targetDist + 1) {
-        dx = dir.x * spd * delta
-        dz = dir.z * spd * delta
+        dx = dir.x * phaseSpd * delta
+        dz = dir.z * phaseSpd * delta
       }
-      dx += perp.x * this.stats.speed * 0.3 * delta
-      dz += perp.z * this.stats.speed * 0.3 * delta
+      dx += perp.x * spd * 0.3 * delta
+      dz += perp.z * spd * 0.3 * delta
 
     } else if (this.archetype === 'battle_mage') {
       const dir  = new THREE.Vector3().subVectors(playerPos, this.position).setY(0).normalize()
       const perp = new THREE.Vector3(-dir.z, 0, dir.x)
       if (dist < 6) {
-        dx = -dir.x * this.stats.speed * delta
-        dz = -dir.z * this.stats.speed * delta
+        dx = -dir.x * spd * delta
+        dz = -dir.z * spd * delta
       } else if (dist > 9) {
-        dx = dir.x * this.stats.speed * delta
-        dz = dir.z * this.stats.speed * delta
+        dx = dir.x * spd * delta
+        dz = dir.z * spd * delta
       }
-      dx += perp.x * this.stats.speed * 0.4 * delta
-      dz += perp.z * this.stats.speed * 0.4 * delta
+      dx += perp.x * spd * 0.4 * delta
+      dz += perp.z * spd * 0.4 * delta
 
     } else if (this.archetype === 'warlock') {
-      // Warlocks strafe aggressively and maintain medium range
       const dir  = new THREE.Vector3().subVectors(playerPos, this.position).setY(0).normalize()
       const perp = new THREE.Vector3(-dir.z, 0, dir.x)
       if (dist < 4) {
-        dx = -dir.x * this.stats.speed * delta
-        dz = -dir.z * this.stats.speed * delta
+        dx = -dir.x * spd * delta
+        dz = -dir.z * spd * delta
       } else if (dist > 7) {
-        dx = dir.x * this.stats.speed * 1.3 * delta
-        dz = dir.z * this.stats.speed * 1.3 * delta
+        dx = dir.x * spd * 1.3 * delta
+        dz = dir.z * spd * 1.3 * delta
       }
-      dx += perp.x * this.stats.speed * 0.6 * delta
-      dz += perp.z * this.stats.speed * 0.6 * delta
+      dx += perp.x * spd * 0.6 * delta
+      dz += perp.z * spd * 0.6 * delta
 
     } else {
       if (dist > 0.5) {
         const dir = new THREE.Vector3().subVectors(playerPos, this.position).setY(0).normalize()
-        dx = dir.x * this.stats.speed * delta
-        dz = dir.z * this.stats.speed * delta
+        dx = dir.x * spd * delta
+        dz = dir.z * spd * delta
       }
     }
 

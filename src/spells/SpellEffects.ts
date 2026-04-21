@@ -1,6 +1,7 @@
 import * as THREE  from 'three'
 import type { Enemy } from '../entities/Enemy'
 import { SPELLS } from './SpellDefinitions'
+import type { StatusEffect } from './SpellDefinitions'
 
 // ── Shared interface for time-tracked effects ──────────────────────────────
 
@@ -44,10 +45,11 @@ export class FrozenNovaEffect implements IEffect {
   private readonly maxRadius:     number
 
   constructor(
-    private readonly center:  THREE.Vector3,
-    private readonly enemies: Enemy[],
-    private readonly damage:  number,
+    private readonly center:       THREE.Vector3,
+    private readonly enemies:      Enemy[],
+    private readonly damage:       number,
     scene: THREE.Scene,
+    private readonly statusEffect?: StatusEffect,
   ) {
     this.maxRadius = SPELLS.frozen_nova.radius ?? 5
     const geo = new THREE.TorusGeometry(this.maxRadius, 0.2, 8, 32)
@@ -94,6 +96,7 @@ export class FrozenNovaEffect implements IEffect {
       const dz = e.position.z - this.center.z
       if (dx * dx + dz * dz <= r2) {
         e.takeDamage(this.damage, scene)
+        if (this.statusEffect) e.applyStatusEffect(this.statusEffect)
       }
     }
   }
@@ -180,13 +183,17 @@ export class ThunderClapEffect implements IEffect {
     damage:   number,
     radius:   number,
     scene:    THREE.Scene,
+    statusEffect?: StatusEffect,
   ) {
     const r2 = radius * radius
     for (const e of enemies) {
       if (!e.alive) continue
       const dx = e.position.x - position.x
       const dz = e.position.z - position.z
-      if (dx * dx + dz * dz <= r2) e.takeDamage(damage, scene)
+      if (dx * dx + dz * dz <= r2) {
+        e.takeDamage(damage, scene)
+        if (statusEffect) e.applyStatusEffect(statusEffect)
+      }
     }
 
     const geo = new THREE.TorusGeometry(radius * 0.9, 0.15, 8, 32)
