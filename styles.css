@@ -66,6 +66,34 @@ body {
 .bar-fill.hp   { background: #c0392b; }
 .bar-fill.mana { background: #2980b9; }
 
+#flask-counter {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 4px;
+  font-family: 'Cinzel', serif;
+  font-size: 14px;
+  color: #44dd44;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+}
+
+#flask-icon {
+  font-size: 16px;
+  filter: hue-rotate(90deg);
+}
+
+#flask-count {
+  transition: transform 0.15s ease;
+}
+
+#flask-count.pulse {
+  transform: scale(1.5);
+}
+
+#flask-count.used {
+  transform: scale(0.8);
+}
+
 /* ── Spell Bars ─────────────────────────────────────────────────────────── */
 
 #spell-bars {

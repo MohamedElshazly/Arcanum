@@ -24,6 +24,8 @@ export class HUD {
   private bossNameEl!:  HTMLElement
   private bossPhaseEl!: HTMLElement
 
+  private flaskCount!: HTMLElement
+
   // [barIndex 0|1][slotIndex 0-3]
   private slots:     HTMLElement[][] = [[], []]
   private cooldowns: HTMLElement[][] = [[], []]
@@ -42,6 +44,7 @@ export class HUD {
     this.bossHpFill   = document.getElementById('boss-hp-fill')!
     this.bossNameEl   = document.getElementById('boss-name')!
     this.bossPhaseEl  = document.getElementById('boss-phase')!
+    this.flaskCount   = document.getElementById('flask-count')!
 
     for (let i = 0; i < 4; i++) {
       this.slots[0].push(document.getElementById(`bar1-slot-${i}`)!)
@@ -66,6 +69,7 @@ export class HUD {
   ): void {
     this.hpFill.style.width   = `${(player.hp   / player.maxHp)   * 100}%`
     this.manaFill.style.width = `${(player.mana  / player.maxMana) * 100}%`
+    this.flaskCount.textContent = String(player.flasks)
 
     this.bar1El.className = 'spell-bar ' + (spellBar.activeBar === 1 ? 'active' : 'inactive')
     this.bar2El.className = 'spell-bar ' + (spellBar.activeBar === 2 ? 'active' : 'inactive')
@@ -133,6 +137,23 @@ export class HUD {
     void (this.barIndicator as HTMLElement).offsetWidth
     this.barIndicator.classList.add('pulse')
     setTimeout(() => this.barIndicator.classList.remove('pulse'), 500)
+  }
+
+  pulseFlask(): void {
+    this.flaskCount.classList.remove('pulse')
+    void this.flaskCount.offsetWidth
+    this.flaskCount.classList.add('pulse')
+    this.flaskCount.addEventListener('animationend', () => {
+      this.flaskCount.classList.remove('pulse')
+    }, { once: true })
+    setTimeout(() => this.flaskCount.classList.remove('pulse'), 300)
+  }
+
+  dimFlask(): void {
+    this.flaskCount.classList.remove('used')
+    void this.flaskCount.offsetWidth
+    this.flaskCount.classList.add('used')
+    setTimeout(() => this.flaskCount.classList.remove('used'), 200)
   }
 
   private drawMinimap(dungeon: DungeonData, currentRoomId: string): void {
