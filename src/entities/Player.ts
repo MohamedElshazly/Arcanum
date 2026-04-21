@@ -243,7 +243,7 @@ export class Player {
     }
   }
 
-  private removeShield(): void {
+  removeShield(): void {
     if (this.shieldMesh) {
       this.mesh.remove(this.shieldMesh)
       this.shieldMesh.geometry.dispose()

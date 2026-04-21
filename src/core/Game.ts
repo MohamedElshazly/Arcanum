@@ -140,8 +140,7 @@ export class Game {
     this.player.isDodging = false
     this.player.dodgeTimer = 0
     this.player.dodgeCooldownTimer = 0
-    this.player.shieldHp = 0
-    this.player.shieldTimer = 0
+    this.player.removeShield()
     this.player.isDying = false
     this.player.deathTimer = 0
     this.player.mesh.scale.set(1, 1, 1)
