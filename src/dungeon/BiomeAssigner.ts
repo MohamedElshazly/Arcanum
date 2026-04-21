@@ -42,7 +42,7 @@ function enemyPositions(count: number, rng: () => number): Array<{ x: number; z:
   return positions
 }
 
-function generateEnemies(room: RoomData, element: SpellElement, rng: () => number): EnemySpawnData[] {
+function generateEnemies(room: RoomData, element: SpellElement, rng: () => number, enemyCountMult = 1): EnemySpawnData[] {
   const d     = room.depth
   const elite = room.type === 'elite'
 
@@ -54,6 +54,11 @@ function generateEnemies(room: RoomData, element: SpellElement, rng: () => numbe
   else if (d <= 3) { apprentices = elite ? 2 : 1; battleMages = elite ? 2 : 1; warlocks = elite ? 1 : 0 }
   else if (d <= 5) { apprentices = elite ? 2 : 1; battleMages = elite ? 2 : 1; warlocks = elite ? 2 : 1 }
   else             { apprentices = elite ? 1 : 1; battleMages = elite ? 3 : 2; warlocks = elite ? 3 : 2 }
+
+  // Apply difficulty enemy count multiplier
+  apprentices = Math.ceil(apprentices * enemyCountMult)
+  battleMages = Math.ceil(battleMages * enemyCountMult)
+  warlocks    = Math.ceil(warlocks * enemyCountMult)
 
   const spellCount = d <= 2 ? 2 : d <= 4 ? 3 : 4
   const total      = apprentices + battleMages + warlocks
@@ -87,7 +92,7 @@ function generateEnemies(room: RoomData, element: SpellElement, rng: () => numbe
   return enemies
 }
 
-export function assignBiomes(dungeon: DungeonData, rng: () => number): void {
+export function assignBiomes(dungeon: DungeonData, rng: () => number, enemyCountMult = 1): void {
   const queue: RoomData[] = [dungeon.startRoom]
   const seen = new Set<string>([dungeon.startRoom.id])
   dungeon.startRoom.depth = 0
@@ -161,7 +166,7 @@ export function assignBiomes(dungeon: DungeonData, rng: () => number): void {
         depth:     room.depth,
       }]
     } else {
-      room.enemies = generateEnemies(room, el, rng)
+      room.enemies = generateEnemies(room, el, rng, enemyCountMult)
     }
   }
 }

@@ -6,12 +6,19 @@ import type { RoomBounds, Obstacle } from '../dungeon/Room'
 
 export type EnemyArchetype = 'apprentice' | 'battle_mage' | 'warlock' | 'boss'
 
+export interface DifficultyStatMultipliers {
+  enemyHp: number
+  enemySpeed: number
+  bossHp: number
+}
+
 export interface EnemyConfig {
   archetype: EnemyArchetype
   spellIds:  string[]
   x: number
   z: number
   depth: number
+  difficultyMult?: DifficultyStatMultipliers
 }
 
 export interface ScaledStats {
@@ -21,14 +28,27 @@ export interface ScaledStats {
 const BASE_HP:    Record<EnemyArchetype, number> = { apprentice: 40, battle_mage: 80, warlock: 100, boss: 500 }
 const BASE_SPEED: Record<EnemyArchetype, number> = { apprentice: 2.5, battle_mage: 1.8, warlock: 2.2, boss: 1.4 }
 
-export function scaleEnemyStats(archetype: EnemyArchetype, depth: number): ScaledStats {
+export function scaleEnemyStats(
+  archetype: EnemyArchetype,
+  depth: number,
+  diffMult?: DifficultyStatMultipliers,
+): ScaledStats {
   const hpD    = Math.min(depth, archetype === 'boss' ? 12 : 8)
   const speedD = Math.min(depth, archetype === 'boss' ? 10 : 6)
   const baseInterval = archetype === 'boss' ? 2.3 : archetype === 'warlock' ? 1.6 : 2.0
   const minInterval  = archetype === 'boss' ? 0.8 : archetype === 'warlock' ? 0.6 : 0.8
+
+  let hp    = Math.round(BASE_HP[archetype] * Math.pow(1.15, hpD))
+  let speed = BASE_SPEED[archetype] * Math.pow(1.05, speedD)
+
+  if (diffMult) {
+    hp    = Math.round(hp * (archetype === 'boss' ? diffMult.bossHp : diffMult.enemyHp))
+    speed *= diffMult.enemySpeed
+  }
+
   return {
-    hp:           Math.round(BASE_HP[archetype] * Math.pow(1.15, hpD)),
-    speed:        BASE_SPEED[archetype] * Math.pow(1.05, speedD),
+    hp,
+    speed,
     castInterval: Math.max(minInterval, baseInterval - depth * 0.1),
     spellCount:   depth <= 2 ? 2 : depth <= 4 ? 3 : 4,
   }
@@ -92,7 +112,7 @@ export class Enemy {
   constructor(config: EnemyConfig) {
     this.archetype = config.archetype
     this.depth     = config.depth
-    this.stats     = scaleEnemyStats(config.archetype, config.depth)
+    this.stats     = scaleEnemyStats(config.archetype, config.depth, config.difficultyMult)
     this.hp        = this.stats.hp
     this.maxHp     = this.stats.hp
 

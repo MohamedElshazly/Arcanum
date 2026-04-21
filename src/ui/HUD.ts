@@ -25,6 +25,7 @@ export class HUD {
   private bossPhaseEl!: HTMLElement
 
   private flaskCount!: HTMLElement
+  private difficultyLabel!: HTMLElement
 
   // [barIndex 0|1][slotIndex 0-3]
   private slots:     HTMLElement[][] = [[], []]
@@ -46,6 +47,19 @@ export class HUD {
     this.bossPhaseEl  = document.getElementById('boss-phase')!
     this.flaskCount   = document.getElementById('flask-count')!
 
+    // Difficulty label — create dynamically if not in HTML
+    let diffEl = document.getElementById('difficulty-label')
+    if (!diffEl) {
+      diffEl = document.createElement('div')
+      diffEl.id = 'difficulty-label'
+      diffEl.style.cssText =
+        'position:fixed;top:8px;right:8px;font-family:monospace;font-size:12px;' +
+        'color:#aaa;background:rgba(0,0,0,0.5);padding:4px 8px;border-radius:4px;' +
+        'pointer-events:none;z-index:50;'
+      document.body.appendChild(diffEl)
+    }
+    this.difficultyLabel = diffEl
+
     for (let i = 0; i < 4; i++) {
       this.slots[0].push(document.getElementById(`bar1-slot-${i}`)!)
       this.slots[1].push(document.getElementById(`bar2-slot-${i}`)!)
@@ -66,6 +80,7 @@ export class HUD {
     dungeonData?: DungeonData,
     currentRoomId?: string,
     boss?: BossHudInfo | null,
+    difficultyName?: string,
   ): void {
     this.hpFill.style.width   = `${(player.hp   / player.maxHp)   * 100}%`
     this.manaFill.style.width = `${(player.mana  / player.maxMana) * 100}%`
@@ -111,6 +126,14 @@ export class HUD {
       this.bossPhaseEl.textContent = `Phase ${['I', 'II', 'III'][boss.phase - 1]}`
     } else {
       this.bossBar.style.display = 'none'
+    }
+
+    // Difficulty label
+    if (difficultyName) {
+      this.difficultyLabel.textContent = difficultyName
+      this.difficultyLabel.style.display = 'block'
+    } else {
+      this.difficultyLabel.style.display = 'none'
     }
 
     if (dungeonData) this.drawMinimap(dungeonData, currentRoomId ?? '')

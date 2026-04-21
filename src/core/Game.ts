@@ -16,6 +16,7 @@ import { PlayerInventory }  from '../progression/PlayerInventory'
 import { MasterySystem }    from '../progression/MasterySystem'
 import { Grimoire }         from '../progression/Grimoire'
 import { RunData }          from '../progression/RunData'
+import { DifficultySystem } from '../progression/DifficultySystem'
 import {
   IEffect,
   castBlink,
@@ -64,6 +65,7 @@ export class Game {
   private mastery:      MasterySystem
   private grimoire:     Grimoire
   private runData:      RunData
+  private difficulty:   DifficultySystem
 
   // UI
   private loadoutScreen:    LoadoutScreen | null = null
@@ -81,10 +83,11 @@ export class Game {
     this.player       = new Player()
     this.session      = new DungeonSession()
 
-    this.inventory = new PlayerInventory()
-    this.mastery   = new MasterySystem()
-    this.grimoire  = new Grimoire()
-    this.runData   = new RunData()
+    this.inventory  = new PlayerInventory()
+    this.mastery    = new MasterySystem()
+    this.grimoire   = new Grimoire()
+    this.runData    = new RunData()
+    this.difficulty = new DifficultySystem()
 
     this.spellBar    = new SpellBar()
     this.spellCaster = new SpellCaster(this.player, this.mastery, this.grimoire)
@@ -116,6 +119,7 @@ export class Game {
       inventory:      this.inventory,
       mastery:        this.mastery,
       grimoire:       this.grimoire,
+      difficulty:     this.difficulty,
       onEnterDungeon: () => this.startRun(),
     })
     this.loadoutScreen.show()
@@ -149,7 +153,7 @@ export class Game {
     pmat.opacity = 1
 
     const seed = Math.floor(Math.random() * 0xFFFFFF)
-    this.session.init(this.sceneManager.scene, this.sceneManager, seed)
+    this.session.init(this.sceneManager.scene, this.sceneManager, seed, this.difficulty.getMultipliers())
 
     this.session.onEnemyDied = () => {
       this.runData.enemiesDefeated++
@@ -302,6 +306,7 @@ export class Game {
       this.session.dungeonData,
       this.session.currentRoomData?.id,
       bossEnemy ? { hp: bossEnemy.hp, maxHp: bossEnemy.maxHp, phase: bossEnemy.phase } : null,
+      this.difficulty.name,
     )
     this.sceneManager.render()
 
@@ -335,6 +340,7 @@ export class Game {
     if (reason === 'victory') {
       const totalWins = parseInt(localStorage.getItem('total_wins') ?? '0', 10) + 1
       localStorage.setItem('total_wins', String(totalWins))
+      this.difficulty.unlockNext()
     }
 
     this.evolutionOverlay.dispose()

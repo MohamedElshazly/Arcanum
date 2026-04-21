@@ -14,6 +14,8 @@ import {
   OPPOSITE_DIR, getNeighborRoom,
   type DungeonData, type RoomData, type Direction,
 } from './DungeonGenerator'
+import type { DifficultyMultipliers } from '../progression/DifficultySystem'
+import type { DifficultyStatMultipliers } from '../entities/Enemy'
 import type { Player }        from '../entities/Player'
 import type { SceneManager }  from '../core/SceneManager'
 import { PLAYER_RADIUS }      from '../constants'
@@ -37,6 +39,7 @@ export class DungeonSession {
   private pendingDir:       Direction | null = null
   private overlay:          HTMLElement | null = null
   private shrineUsed        = false
+  private diffMultipliers:  DifficultyMultipliers | null = null
 
   /** Called when an enemy dies. Game.ts wires this up. */
   onEnemyDied: (() => void) | null = null
@@ -44,13 +47,14 @@ export class DungeonSession {
   /** Called when a spellbook orb is collected by the player. */
   onOrbCollected: ((spellIds: string[]) => void) | null = null
 
-  init(scene: THREE.Scene, sm: SceneManager, seed: number): void {
+  init(scene: THREE.Scene, sm: SceneManager, seed: number, diffMultipliers?: DifficultyMultipliers): void {
     this.sm       = sm
     this.renderer = new DungeonRenderer(sm)
     this.overlay  = document.getElementById('fade-overlay')
+    this.diffMultipliers = diffMultipliers ?? null
 
     this.dungeon = generateDungeon(seed)
-    assignBiomes(this.dungeon, mulberry32(seed + 9999))
+    assignBiomes(this.dungeon, mulberry32(seed + 9999), diffMultipliers?.enemyCount)
 
     this.activateRoom(this.dungeon.startRoom, scene, null)
   }
@@ -204,8 +208,12 @@ export class DungeonSession {
 
     this.renderer.applyBiome(biome, scene)
 
+    const diffStatMult: DifficultyStatMultipliers | undefined = this.diffMultipliers
+      ? { enemyHp: this.diffMultipliers.enemyHp, enemySpeed: this.diffMultipliers.enemySpeed, bossHp: this.diffMultipliers.bossHp }
+      : undefined
+
     this.enemies = roomData.enemies.map(spawn =>
-      new Enemy({ archetype: spawn.archetype, spellIds: spawn.spellIds, x: spawn.position.x, z: spawn.position.z, depth: spawn.depth })
+      new Enemy({ archetype: spawn.archetype, spellIds: spawn.spellIds, x: spawn.position.x, z: spawn.position.z, depth: spawn.depth, difficultyMult: diffStatMult })
     )
     for (const e of this.enemies) scene.add(e.mesh)
 
