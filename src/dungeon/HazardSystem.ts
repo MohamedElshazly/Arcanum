@@ -5,11 +5,14 @@ import type { Player } from '../entities/Player'
 import { mulberry32 } from '../utils/MathUtils'
 
 interface Hazard {
-  def:        HazardDefinition
-  mesh:       THREE.Mesh
-  position:   THREE.Vector3
-  timer:      number
-  stormTimer: number
+  def:          HazardDefinition
+  mesh:         THREE.Mesh
+  position:     THREE.Vector3
+  timer:        number
+  stormTimer:   number
+  playerInside: boolean
+  bolt:         THREE.Line | null
+  boltTimer:    number
 }
 
 const DOOR_CLEAR   = 4
@@ -212,7 +215,7 @@ export class HazardSystem {
       const mesh = this.buildMesh(def)
       mesh.position.copy(pos)
       scene.add(mesh)
-      this.hazards.push({ def, mesh, position: pos, timer: 0, stormTimer: 0 })
+      this.hazards.push({ def, mesh, position: pos, timer: 0, stormTimer: 0, playerInside: false, bolt: null, boltTimer: 0 })
       placed.push(pos)
     }
   }
@@ -228,7 +231,45 @@ export class HazardSystem {
       mat.emissiveIntensity = inRange ? 1.5 : 0.5
 
       this.animateHazard(h, delta, scene)
-      if (!inRange) continue
+
+      // Clean up bolt after duration
+      if (h.bolt) {
+        h.boltTimer -= delta
+        if (h.boltTimer <= 0) {
+          scene.remove(h.bolt)
+          h.bolt.geometry.dispose();
+          (h.bolt.material as THREE.LineBasicMaterial).dispose()
+          h.bolt = null
+        }
+      }
+
+      // Zap visual for storm_zone
+      if (inRange && h.def.type === 'storm_zone') {
+        h.stormTimer += delta
+        if (h.stormTimer >= 0.4) {
+          h.stormTimer = 0
+          // Remove old bolt if still present
+          if (h.bolt) {
+            scene.remove(h.bolt)
+            h.bolt.geometry.dispose();
+            (h.bolt.material as THREE.LineBasicMaterial).dispose()
+          }
+          const points = [
+            new THREE.Vector3(h.position.x, 0.75, h.position.z),
+            new THREE.Vector3(player.position.x, 0.75, player.position.z),
+          ]
+          const geo = new THREE.BufferGeometry().setFromPoints(points)
+          const lineMat = new THREE.LineBasicMaterial({ color: 0xffff00 })
+          h.bolt = new THREE.Line(geo, lineMat)
+          scene.add(h.bolt)
+          h.boltTimer = 0.15
+        }
+      }
+
+      if (!inRange) {
+        h.playerInside = false
+        continue
+      }
 
       switch (h.def.effect) {
         case 'damage_over_time':
@@ -248,6 +289,14 @@ export class HazardSystem {
             player.knockbackVelocity.set(Math.cos(angle) * h.def.value, 0, Math.sin(angle) * h.def.value)
           }
           break
+        case 'slide': {
+          if (!h.playerInside) {
+            // First frame entering ice — apply impulse in movement direction
+            player.knockbackVelocity.copy(player.lastDirection).multiplyScalar(h.def.value)
+            h.playerInside = true
+          }
+          break
+        }
       }
     }
   }
@@ -259,6 +308,11 @@ export class HazardSystem {
       const mat = h.mesh.material as THREE.MeshStandardMaterial
       if (mat.map) mat.map.dispose()
       mat.dispose()
+      if (h.bolt) {
+        scene.remove(h.bolt)
+        h.bolt.geometry.dispose();
+        (h.bolt.material as THREE.LineBasicMaterial).dispose()
+      }
     }
     this.hazards = []
   }
