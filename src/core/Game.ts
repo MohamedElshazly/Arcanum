@@ -146,6 +146,7 @@ export class Game {
     this.player.dodgeCooldownTimer = 0
     this.player.removeShield()
     this.player.isDying = false
+    this.player.alive = true
     this.player.deathTimer = 0
     this.player.mesh.scale.set(1, 1, 1)
     const pmat = this.player.mesh.material as THREE.MeshStandardMaterial
@@ -168,6 +169,8 @@ export class Game {
     this.session.onOrbCollected = (spellIds) => {
       this.runData.recordBookCollected(spellIds)
     }
+
+    this.player.knockbackVelocity.set(0, 0, 0)
 
     this.projectiles   = []
     this.activeEffects = []

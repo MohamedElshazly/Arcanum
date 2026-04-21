@@ -47,6 +47,7 @@ export const BOSS_VARIANTS: Record<BossVariant, BossVariantConfig> = {
 export interface DifficultyStatMultipliers {
   enemyHp: number
   enemySpeed: number
+  enemyDamage: number
   bossHp: number
 }
 
@@ -61,7 +62,7 @@ export interface EnemyConfig {
 }
 
 export interface ScaledStats {
-  hp: number; speed: number; castInterval: number; spellCount: number
+  hp: number; speed: number; castInterval: number; spellCount: number; damage: number
 }
 
 const BASE_HP:    Record<EnemyArchetype, number> = { apprentice: 40, battle_mage: 80, warlock: 100, boss: 500 }
@@ -79,10 +80,12 @@ export function scaleEnemyStats(
 
   let hp    = Math.round(BASE_HP[archetype] * Math.pow(1.15, hpD))
   let speed = BASE_SPEED[archetype] * Math.pow(1.05, speedD)
+  let damage = 1.0
 
   if (diffMult) {
     hp    = Math.round(hp * (archetype === 'boss' ? diffMult.bossHp : diffMult.enemyHp))
     speed *= diffMult.enemySpeed
+    damage *= diffMult.enemyDamage
   }
 
   return {
@@ -90,6 +93,7 @@ export function scaleEnemyStats(
     speed,
     castInterval: Math.max(minInterval, baseInterval - depth * 0.1),
     spellCount:   depth <= 2 ? 2 : depth <= 4 ? 3 : 4,
+    damage,
   }
 }
 
@@ -263,7 +267,12 @@ export class Enemy {
       this.orbitalRing.geometry.dispose()
       ;(this.orbitalRing.material as THREE.MeshStandardMaterial).dispose()
     }
-    if (this.ghostMesh) { scene.remove(this.ghostMesh); this.ghostMesh = null }
+    if (this.ghostMesh) {
+      scene.remove(this.ghostMesh)
+      this.ghostMesh.geometry.dispose()
+      ;(this.ghostMesh.material as THREE.MeshStandardMaterial).dispose()
+      this.ghostMesh = null
+    }
   }
 
   private dominantColor(): number {
@@ -296,7 +305,12 @@ export class Enemy {
           this.orbitalRing.geometry.dispose()
           ;(this.orbitalRing.material as THREE.MeshStandardMaterial).dispose()
         }
-        if (this.ghostMesh) { scene.remove(this.ghostMesh); this.ghostMesh = null }
+        if (this.ghostMesh) {
+          scene.remove(this.ghostMesh)
+          this.ghostMesh.geometry.dispose()
+          ;(this.ghostMesh.material as THREE.MeshStandardMaterial).dispose()
+          this.ghostMesh = null
+        }
       }
       return []
     }
@@ -382,7 +396,12 @@ export class Enemy {
       this.ghostTimer -= delta
       const gm = this.ghostMesh.material as THREE.MeshStandardMaterial
       gm.opacity = Math.max(0, this.ghostTimer / 0.4)
-      if (this.ghostTimer <= 0) { scene.remove(this.ghostMesh); this.ghostMesh = null }
+      if (this.ghostTimer <= 0) {
+        scene.remove(this.ghostMesh)
+        this.ghostMesh.geometry.dispose()
+        ;(this.ghostMesh.material as THREE.MeshStandardMaterial).dispose()
+        this.ghostMesh = null
+      }
     }
 
     // ── Telegraph ─────────────────────────────────────────────────────────
@@ -430,7 +449,7 @@ export class Enemy {
       if (this.bossQueueTimer <= 0) {
         const next   = this.bossQueue.shift()!
         const origin = this.position.clone().setY(0.75)
-        const mod    = { ...next.spell, damage: Math.round(next.spell.damage * 0.75) }
+        const mod    = { ...next.spell, damage: Math.round(next.spell.damage * 0.75 * this.stats.damage) }
         this.bossQueueTimer = this.phase === 3 ? 0.15 : this.phase === 2 ? 0.25 : 0.4
         return [new Projectile(origin, next.dir, mod, scene)]
       }
@@ -644,6 +663,12 @@ export class Enemy {
   private clearTelegraph(scene: THREE.Scene): void {
     if (!this.telegraph) return
     scene.remove(this.telegraph.originRing, this.telegraph.destRing, this.telegraph.line)
+    this.telegraph.originRing.geometry.dispose()
+    ;(this.telegraph.originRing.material as THREE.MeshStandardMaterial).dispose()
+    this.telegraph.destRing.geometry.dispose()
+    ;(this.telegraph.destRing.material as THREE.MeshStandardMaterial).dispose()
+    this.telegraph.line.geometry.dispose()
+    ;(this.telegraph.line.material as THREE.LineBasicMaterial).dispose()
     this.telegraph = null
   }
 
@@ -656,7 +681,7 @@ export class Enemy {
     const base   = new THREE.Vector3().subVectors(playerPos, this.position).setY(0).normalize()
 
     if (this.archetype !== 'boss') {
-      const dmg = Math.round(spell.damage * 0.65 * (1 + 0.08 * Math.min(this.depth, 8)))
+      const dmg = Math.round(spell.damage * 0.65 * (1 + 0.08 * Math.min(this.depth, 8)) * this.stats.damage)
       const mod  = { ...spell, damage: dmg }
       const origin = this.position.clone().setY(0.75)
       if (this.archetype === 'warlock') {
@@ -678,7 +703,7 @@ export class Enemy {
       // Phase 1: single-target with boosted damage
       const spreadCount = 2
       const spreadAngle = Math.PI / 10
-      const dmgMod = { ...spell, damage: Math.round(spell.damage * 1.3) }
+      const dmgMod = { ...spell, damage: Math.round(spell.damage * 1.3 * this.stats.damage) }
       for (let i = 0; i < spreadCount; i++) {
         const offset = (i - Math.floor(spreadCount / 2)) * spreadAngle
         const dir    = base.clone().applyAxisAngle(new THREE.Vector3(0, 1, 0), offset)
@@ -701,7 +726,7 @@ export class Enemy {
       // Phase 3: massive barrage
       const spreadCount = 9
       const spreadAngle = Math.PI / 12
-      const dmgMod = { ...spell, damage: Math.round(spell.damage * 0.85) }
+      const dmgMod = { ...spell, damage: Math.round(spell.damage * 0.85 * this.stats.damage) }
       for (let i = 0; i < spreadCount; i++) {
         const offset = (i - Math.floor(spreadCount / 2)) * spreadAngle
         const dir    = base.clone().applyAxisAngle(new THREE.Vector3(0, 1, 0), offset)

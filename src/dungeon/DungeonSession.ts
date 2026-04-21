@@ -209,7 +209,7 @@ export class DungeonSession {
     this.renderer.applyBiome(biome, scene)
 
     const diffStatMult: DifficultyStatMultipliers | undefined = this.diffMultipliers
-      ? { enemyHp: this.diffMultipliers.enemyHp, enemySpeed: this.diffMultipliers.enemySpeed, bossHp: this.diffMultipliers.bossHp }
+      ? { enemyHp: this.diffMultipliers.enemyHp, enemySpeed: this.diffMultipliers.enemySpeed, enemyDamage: this.diffMultipliers.enemyDamage, bossHp: this.diffMultipliers.bossHp }
       : undefined
 
     this.enemies = roomData.enemies.map(spawn =>
