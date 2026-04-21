@@ -110,7 +110,30 @@ export function generateDungeon(seed: number): DungeonData {
   }
 
   const startKey = `${startX},${startY}`
-  const bossCell = path[path.length - 1]
+
+  // BFS to find deepest cell — boss always goes there
+  const depthMap = new Map<string, number>()
+  const queue: Array<{ x: number; y: number }> = [{ x: startX, y: startY }]
+  depthMap.set(startKey, 0)
+  while (queue.length > 0) {
+    const cur = queue.shift()!
+    const curKey = `${cur.x},${cur.y}`
+    const curDepth = depthMap.get(curKey)!
+    for (const n of cardinalNeighbors(cur.x, cur.y)) {
+      const nk = `${n.x},${n.y}`
+      if (inPath.has(nk) && !depthMap.has(nk)) {
+        depthMap.set(nk, curDepth + 1)
+        queue.push(n)
+      }
+    }
+  }
+
+  let bossCell = path[path.length - 1]
+  let maxDepth = 0
+  for (const p of path) {
+    const d = depthMap.get(`${p.x},${p.y}`) ?? 0
+    if (d > maxDepth) { maxDepth = d; bossCell = p }
+  }
   const bossKey  = `${bossCell.x},${bossCell.y}`
 
   const bossAdjacentKeys = new Set(

@@ -133,6 +133,9 @@ export class Game {
     this.player.flasks    = this.player.maxFlasks
     this.player.isHealing = false
     this.player.healTimer = 0
+    this.player.isDodging = false
+    this.player.dodgeTimer = 0
+    this.player.dodgeCooldownTimer = 0
 
     const seed = Math.floor(Math.random() * 0xFFFFFF)
     this.session.init(this.sceneManager.scene, this.sceneManager, seed)
@@ -185,7 +188,7 @@ export class Game {
     const wheelDelta = this.inputManager.consumeWheelDelta()
     if (wheelDelta !== 0) this.sceneManager.rotateCamera(wheelDelta)
 
-    if (!this.player.isHealing) {
+    if (!this.player.isHealing && !this.player.isDodging) {
       if (this.inputManager.isJustPressed('Tab')) {
         this.spellBar.toggleBar()
         this.hud.onBarToggle()
@@ -197,11 +200,16 @@ export class Game {
         }
       }
 
-      // Flask usage — Space key
-      if (this.inputManager.isJustPressed('Space')) {
+      // Flask usage — Shift key
+      if (this.inputManager.isJustPressed('ShiftLeft') || this.inputManager.isJustPressed('ShiftRight')) {
         if (this.player.useFlask()) {
           this.hud.dimFlask()
         }
+      }
+
+      // Dodge roll — Space key
+      if (this.inputManager.isJustPressed('Space')) {
+        this.player.startDodge(this.sceneManager.angle, this.inputManager)
       }
     }
 

@@ -51,9 +51,9 @@ function generateEnemies(room: RoomData, element: SpellElement, rng: () => numbe
   let warlocks     = 0
 
   if (d <= 2)      { apprentices = elite ? 3 : 2 }
-  else if (d <= 4) { apprentices = elite ? 2 : 1; battleMages = elite ? 2 : 1 }
-  else if (d <= 6) { apprentices = elite ? 2 : 1; battleMages = elite ? 3 : 2; warlocks = elite ? 1 : 0 }
-  else             { apprentices = elite ? 2 : 1; battleMages = elite ? 3 : 2; warlocks = elite ? 2 : 1 }
+  else if (d <= 3) { apprentices = elite ? 2 : 1; battleMages = elite ? 2 : 1; warlocks = elite ? 1 : 0 }
+  else if (d <= 5) { apprentices = elite ? 2 : 1; battleMages = elite ? 2 : 1; warlocks = elite ? 2 : 1 }
+  else             { apprentices = elite ? 1 : 1; battleMages = elite ? 3 : 2; warlocks = elite ? 3 : 2 }
 
   const spellCount = d <= 2 ? 2 : d <= 4 ? 3 : 4
   const total      = apprentices + battleMages + warlocks
