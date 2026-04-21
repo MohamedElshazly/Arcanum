@@ -40,10 +40,9 @@ export class DifficultySystem {
   }
 
   unlockNext(): void {
-    const next = this._level + 1
-    if (next > this._maxUnlocked) {
-      this._maxUnlocked = next
-      localStorage.setItem('max_difficulty', String(next))
+    if (this._level >= this._maxUnlocked) {
+      this._maxUnlocked = this._level + 1
+      localStorage.setItem('max_difficulty', String(this._maxUnlocked))
     }
   }
 }

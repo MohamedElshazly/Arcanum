@@ -57,7 +57,7 @@ function generateEnemies(room: RoomData, element: SpellElement, rng: () => numbe
   if (d <= 2)      { apprentices = elite ? 3 : 2 }
   else if (d <= 3) { apprentices = elite ? 2 : 1; battleMages = elite ? 2 : 1; warlocks = elite ? 1 : 0 }
   else if (d <= 5) { apprentices = elite ? 2 : 1; battleMages = elite ? 2 : 1; warlocks = elite ? 2 : 1 }
-  else             { apprentices = elite ? 1 : 1; battleMages = elite ? 3 : 2; warlocks = elite ? 3 : 2 }
+  else             { apprentices = elite ? 1 : 1; battleMages = elite ? 2 : 1; warlocks = elite ? 2 : 2 }
 
   // Apply difficulty enemy count multiplier
   apprentices = Math.ceil(apprentices * enemyCountMult)

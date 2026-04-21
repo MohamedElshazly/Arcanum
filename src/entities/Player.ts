@@ -118,8 +118,6 @@ export class Player {
       return  // Cannot move or act while healing
     }
 
-    this.speedMultiplier = 1.0
-
     const dir = new THREE.Vector3()
     if (input.isHeld('ArrowLeft'))  dir.x -= 1
     if (input.isHeld('ArrowRight')) dir.x += 1
@@ -133,6 +131,9 @@ export class Player {
       this.position.x += dir.x * PLAYER_SPEED * this.speedMultiplier * delta
       this.position.z += dir.z * PLAYER_SPEED * this.speedMultiplier * delta
     }
+
+    // Reset after movement so hazard slow from session.update() persists into next frame
+    this.speedMultiplier = 1.0
 
     if (this.knockbackVelocity.lengthSq() > 0.001) {
       this.position.x += this.knockbackVelocity.x * delta
@@ -166,7 +167,7 @@ export class Player {
   }
 
   takeDamage(amount: number): void {
-    // if (import.meta.env.DEV) return
+    if (import.meta.env.DEV) return
     if (this.isDodging) return  // i-frames during dodge
     if (this.shieldHp > 0) {
       const absorbed = Math.min(this.shieldHp, amount)
