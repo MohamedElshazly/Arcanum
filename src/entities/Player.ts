@@ -4,7 +4,7 @@ import type { InputManager } from '../core/InputManager'
 import type { RoomBounds }   from '../dungeon/Room'
 import type { Obstacle }     from '../dungeon/Room'
 
-const HP_REGEN_RATE = 2  // HP per second
+const FLASK_CAST_TIME = 1.0
 
 export class Player {
   readonly mesh: THREE.Mesh
@@ -24,6 +24,13 @@ export class Player {
   speedMultiplier   = 1.0
   knockbackVelocity = new THREE.Vector3()
 
+  // Flask healing
+  flasks         = 5
+  maxFlasks      = 5
+  flaskHealPercent = 0.5
+  isHealing      = false
+  healTimer      = 0
+
   constructor() {
     const geo  = new THREE.CylinderGeometry(PLAYER_RADIUS, PLAYER_RADIUS, 1.5, 16)
     const mat  = new THREE.MeshStandardMaterial({
@@ -42,6 +49,20 @@ export class Player {
     cameraAngle  = 0,
     obstacles: readonly Obstacle[] = [],
   ): void {
+    // Flask heal timer
+    if (this.isHealing) {
+      this.healTimer -= delta
+      if (this.healTimer <= 0) {
+        this.hp = Math.min(this.maxHp, this.hp + this.maxHp * this.flaskHealPercent)
+        this.isHealing = false
+        this.healTimer = 0
+        // Remove green tint
+        const mat = this.mesh.material as THREE.MeshStandardMaterial
+        mat.emissive.set(0x000000)
+      }
+      return  // Cannot move or act while healing
+    }
+
     this.speedMultiplier = 1.0
 
     const dir = new THREE.Vector3()
@@ -80,11 +101,27 @@ export class Player {
       }
     }
 
-    this.hp   = Math.min(this.maxHp,   this.hp   + HP_REGEN_RATE   * delta)
     this.mana = Math.min(this.maxMana, this.mana  + MANA_REGEN_RATE * delta)
   }
 
   takeDamage(amount: number): void {
     this.hp = Math.max(0, this.hp - amount)
+  }
+
+  useFlask(): boolean {
+    if (this.flasks <= 0 || this.isHealing || this.hp >= this.maxHp || this.hp <= 0) return false
+    this.flasks -= 1
+    this.isHealing = true
+    this.healTimer = FLASK_CAST_TIME
+    // Green tint during heal
+    const mat = this.mesh.material as THREE.MeshStandardMaterial
+    mat.emissive.set(0x003300)
+    return true
+  }
+
+  addFlask(): boolean {
+    if (this.flasks >= this.maxFlasks) return false
+    this.flasks += 1
+    return true
   }
 }
