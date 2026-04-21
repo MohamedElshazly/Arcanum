@@ -68,7 +68,6 @@ export class LoadoutScreen {
     this.difficultyEl.appendChild(leftBtn)
     this.difficultyEl.appendChild(label)
     this.difficultyEl.appendChild(rightBtn)
-    this.config.root.appendChild(this.difficultyEl)
 
     this.spellbook = new Spellbook({
       root: this.config.root,
@@ -80,6 +79,14 @@ export class LoadoutScreen {
       onConfirm: () => this.config.onEnterDungeon(),
     })
     this.spellbook.show()
+
+    // Append after spellbook.show() since it wipes root.innerHTML
+    const overlay = this.config.root.querySelector('.spellbook-overlay')
+    if (overlay) {
+      overlay.insertBefore(this.difficultyEl, overlay.firstChild)
+    } else {
+      this.config.root.appendChild(this.difficultyEl)
+    }
   }
 
   dispose(): void {
