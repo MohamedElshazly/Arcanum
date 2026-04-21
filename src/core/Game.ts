@@ -26,6 +26,10 @@ import {
   StaticFieldEffect,
   FrostDecalEffect,
   LightningBoltEffect,
+  BurningHandsEffect,
+  ConeOfColdEffect,
+  ThunderwaveEffect,
+  ForceWallEffect,
 } from '../spells/SpellEffects'
 import { circleVsRect }  from '../utils/CollisionUtils'
 import {
@@ -136,6 +140,8 @@ export class Game {
     this.player.isDodging = false
     this.player.dodgeTimer = 0
     this.player.dodgeCooldownTimer = 0
+    this.player.shieldHp = 0
+    this.player.shieldTimer = 0
     this.player.isDying = false
     this.player.deathTimer = 0
     this.player.mesh.scale.set(1, 1, 1)
@@ -257,6 +263,25 @@ export class Game {
     const bounds = this.session.activeRoomBounds
     for (const proj of this.projectiles) {
       proj.update(delta, bounds, this.sceneManager.scene, this.session.activeRoomObstacles)
+    }
+
+    // Aura damage (ball_lightning)
+    for (const proj of this.projectiles) {
+      if (!proj.alive || !proj.spell.auraRadius || !proj.spell.auraDamage || !proj.spell.auraTick) continue
+      proj.auraTimer += delta
+      if (proj.auraTimer >= proj.spell.auraTick) {
+        proj.auraTimer -= proj.spell.auraTick
+        const r2 = proj.spell.auraRadius * proj.spell.auraRadius
+        for (const enemy of this.session.activeEnemies) {
+          if (!enemy.alive) continue
+          const dx = enemy.position.x - proj.mesh.position.x
+          const dz = enemy.position.z - proj.mesh.position.z
+          if (dx * dx + dz * dz <= r2) {
+            enemy.takeDamage(proj.spell.auraDamage, this.sceneManager.scene)
+            this.runData.damageDealt += proj.spell.auraDamage
+          }
+        }
+      }
     }
 
     this.checkProjectileCollisions(currentTime)
@@ -436,6 +461,21 @@ export class Game {
         }
         break
       }
+      case 'burning_hands':
+        this.activeEffects.push(new BurningHandsEffect(pos, direction, enemies, SPELLS.burning_hands.damage, SPELLS.burning_hands.radius ?? 4, SPELLS.burning_hands.statusEffect, scene))
+        break
+      case 'cone_of_cold':
+        this.activeEffects.push(new ConeOfColdEffect(pos, direction, enemies, SPELLS.cone_of_cold.damage, SPELLS.cone_of_cold.radius ?? 5, SPELLS.cone_of_cold.statusEffect, scene))
+        break
+      case 'thunderwave':
+        this.activeEffects.push(new ThunderwaveEffect(pos, enemies, SPELLS.thunderwave.damage, SPELLS.thunderwave.radius ?? 4, SPELLS.thunderwave.statusEffect, scene))
+        break
+      case 'force_wall':
+        this.activeEffects.push(new ForceWallEffect(this.mouseWorld.clone(), direction, SPELLS.force_wall.damage, SPELLS.force_wall.duration ?? 5, scene))
+        break
+      case 'ice_barrier':
+        this.player.activateShield(60, 6.0)
+        break
     }
   }
 
@@ -447,6 +487,7 @@ export class Game {
 
       for (const enemy of enemies) {
         if (!enemy.alive) continue
+        if (proj.spell.piercing && proj.piercingHitSet.has(enemy)) continue
 
         const projRadius = Math.max(proj.spell.projectileScale.x, proj.spell.projectileScale.z) * 0.5
         const hit = circleVsRect(
@@ -492,8 +533,12 @@ export class Game {
           }
         }
 
-        proj.destroy(this.sceneManager.scene)
-        break
+        if (proj.spell.piercing) {
+          proj.piercingHitSet.add(enemy)
+        } else {
+          proj.destroy(this.sceneManager.scene)
+          break
+        }
       }
     }
   }

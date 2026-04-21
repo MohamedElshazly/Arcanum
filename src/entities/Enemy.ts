@@ -568,7 +568,7 @@ export class Enemy {
   // ── Projectile firing ─────────────────────────────────────────────────────
 
   private fireProjectiles(playerPos: THREE.Vector3, scene: THREE.Scene): Projectile[] {
-    const castable = this.spells.filter(s => s.id !== 'blink' && s.id !== 'ice_wall' && s.id !== 'mana_siphon' && s.id !== 'static_field')
+    const castable = this.spells.filter(s => s.type === 'projectile')
     if (!castable.length) return []
     const spell  = castable[Math.floor(Math.random() * castable.length)]
     const base   = new THREE.Vector3().subVectors(playerPos, this.position).setY(0).normalize()

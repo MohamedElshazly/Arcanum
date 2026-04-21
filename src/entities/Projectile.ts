@@ -19,6 +19,12 @@ export class Projectile {
   /** Non-zero only for 'chain_lightning'; decremented on each jump. */
   jumpsRemaining: number
 
+  /** For piercing projectiles: tracks enemies already hit to avoid double-damage. */
+  private readonly hitEnemies = new Set<object>()
+
+  /** For aura projectiles (ball_lightning): ticks up to auraTick interval. */
+  auraTimer = 0
+
   private trail:       TrailSystem
   private elapsedTime = 0
 
@@ -124,6 +130,9 @@ export class Projectile {
       this.destroy(scene)
     }
   }
+
+  /** Returns the set of enemies already hit by this piercing projectile. */
+  get piercingHitSet(): Set<object> { return this.hitEnemies }
 
   destroy(scene: THREE.Scene): void {
     if (!this.alive) return

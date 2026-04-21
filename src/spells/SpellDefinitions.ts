@@ -21,6 +21,10 @@ export interface Spell {
   radius?:            number
   duration?:          number
   statusEffect?:      StatusEffect
+  piercing?:          boolean       // projectile passes through enemies
+  auraRadius?:        number        // damages nearby enemies as projectile moves
+  auraDamage?:        number        // damage per aura tick
+  auraTick?:          number        // seconds between aura ticks
   description:        string
   masteryEvolvesTo?:  string
   projectileGeometry: 'sphere' | 'cone' | 'cylinder' | 'ring' | 'spike'
@@ -158,5 +162,75 @@ export const SPELLS: Record<string, Spell> = {
     description: 'A massive arcane detonation centred on the caster.',
     projectileGeometry: 'ring', projectileScale: { x: 4, y: 4, z: 0.2 },
     color: '#dd88ff', emissiveColor: '#aa00ff', emissiveIntensity: 2.0,
+  },
+
+  // ── NEW FIRE ─────────────────────────────────────────────────────────────
+  meteor: {
+    id: 'meteor', name: 'Meteor', element: 'fire', type: 'projectile',
+    damage: 70, manaCost: 50, cooldown: 8.0, range: 20, speed: 5, radius: 5.0,
+    statusEffect: { type: 'burning', duration: 3.0, value: 5 },
+    description: 'A slow-moving meteor that erupts in a massive explosion.',
+    projectileGeometry: 'sphere', projectileScale: { x: 1.2, y: 1.2, z: 1.2 },
+    color: '#ff4400', emissiveColor: '#ff2200', emissiveIntensity: 2.0,
+  },
+  burning_hands: {
+    id: 'burning_hands', name: 'Burning Hands', element: 'fire', type: 'aoe',
+    damage: 25, manaCost: 20, cooldown: 3.0, range: 4, radius: 4.0,
+    statusEffect: { type: 'burning', duration: 2.0, value: 5 },
+    description: 'A cone of fire that scorches enemies in front of you.',
+    projectileGeometry: 'cone', projectileScale: { x: 1, y: 1, z: 1 },
+    color: '#ff6600', emissiveColor: '#ff4400', emissiveIntensity: 1.5,
+  },
+
+  // ── NEW ICE ──────────────────────────────────────────────────────────────
+  cone_of_cold: {
+    id: 'cone_of_cold', name: 'Cone of Cold', element: 'ice', type: 'aoe',
+    damage: 45, manaCost: 35, cooldown: 5.0, range: 5, radius: 5.0,
+    statusEffect: { type: 'freeze', duration: 1.5 },
+    description: 'A wide cone of freezing energy that flash-freezes enemies.',
+    projectileGeometry: 'cone', projectileScale: { x: 1, y: 1, z: 1 },
+    color: '#aaddff', emissiveColor: '#00ccff', emissiveIntensity: 1.5,
+  },
+  ice_barrier: {
+    id: 'ice_barrier', name: 'Ice Barrier', element: 'ice', type: 'self',
+    damage: 0, manaCost: 30, cooldown: 12.0, range: 0, duration: 6.0,
+    description: 'Creates a protective ice shield that absorbs damage.',
+    projectileGeometry: 'sphere', projectileScale: { x: 1, y: 1, z: 1 },
+    color: '#aaddff', emissiveColor: '#00ffff', emissiveIntensity: 1.0,
+  },
+
+  // ── NEW LIGHTNING ────────────────────────────────────────────────────────
+  ball_lightning: {
+    id: 'ball_lightning', name: 'Ball Ltng', element: 'lightning', type: 'projectile',
+    damage: 15, manaCost: 30, cooldown: 5.0, range: 20, speed: 4,
+    auraRadius: 3, auraDamage: 15, auraTick: 0.5,
+    description: 'A slow-moving orb that zaps nearby enemies as it passes.',
+    projectileGeometry: 'sphere', projectileScale: { x: 0.8, y: 0.8, z: 0.8 },
+    color: '#ffff00', emissiveColor: '#ffff00', emissiveIntensity: 3.0,
+  },
+  thunderwave: {
+    id: 'thunderwave', name: 'Thunderwave', element: 'lightning', type: 'aoe',
+    damage: 30, manaCost: 25, cooldown: 4.0, range: 4, radius: 4.0,
+    statusEffect: { type: 'knockback', duration: 0, value: 4 },
+    description: 'A thunderous shockwave that damages and knocks back all nearby enemies.',
+    projectileGeometry: 'ring', projectileScale: { x: 1, y: 1, z: 1 },
+    color: '#ffffff', emissiveColor: '#ffff88', emissiveIntensity: 2.0,
+  },
+
+  // ── NEW ARCANE ───────────────────────────────────────────────────────────
+  arcane_orb: {
+    id: 'arcane_orb', name: 'Arcane Orb', element: 'arcane', type: 'projectile',
+    damage: 25, manaCost: 18, cooldown: 2.0, range: 20, speed: 12,
+    piercing: true,
+    description: 'A piercing orb that passes through enemies.',
+    projectileGeometry: 'sphere', projectileScale: { x: 0.6, y: 0.6, z: 0.6 },
+    color: '#dd88ff', emissiveColor: '#aa00ff', emissiveIntensity: 2.0,
+  },
+  force_wall: {
+    id: 'force_wall', name: 'Force Wall', element: 'arcane', type: 'aoe',
+    damage: 20, manaCost: 35, cooldown: 8.0, range: 10, duration: 5.0,
+    description: 'A wall of arcane energy at the target location that damages enemies on contact.',
+    projectileGeometry: 'cylinder', projectileScale: { x: 1, y: 1, z: 1 },
+    color: '#dd88ff', emissiveColor: '#aa00ff', emissiveIntensity: 1.5,
   },
 }

@@ -35,6 +35,15 @@ const ICONS: Record<string, string> = {
   blink:        '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="8" cy="12" r="3" opacity="0.3"/><circle cx="16" cy="12" r="3"/><path d="M11 12h2" stroke="currentColor" stroke-width="1" stroke-dasharray="1 1"/></svg>',
   mana_siphon:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2c-4 4-4 8 0 10s0 6 0 10"/><path d="M12 2c4 4 4 8 0 10s0 6 0 10"/></svg>',
   arcane_explosion:'<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="3"/><path d="M12 2l1 5h-2zM12 22l-1-5h2zM2 12l5-1v2zM22 12l-5 1v-2zM5 5l4 3-1.5 1.5zM19 19l-4-3 1.5-1.5zM19 5l-3 4-1.5-1.5zM5 19l3-4 1.5 1.5z"/></svg>',
+  // New spells
+  meteor:         '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="14" cy="10" r="5"/><path d="M4 2l3 5-2 1 5 4-1-4 2-1z" opacity="0.6"/></svg>',
+  burning_hands:  '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 14l-6 8h12l-6-8z"/><path d="M8 16c-1-3 0-6 4-8 4 2 5 5 4 8" opacity="0.7"/></svg>',
+  cone_of_cold:   '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 14l-8 8h16l-8-8z"/><path d="M12 2v6M8 6l4 4 4-4" stroke="currentColor" stroke-width="1.5" fill="none"/></svg>',
+  ice_barrier:    '<svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" fill="none"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/></svg>',
+  ball_lightning:  '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="4"/><path d="M4 12h3M17 12h3M12 4v3M12 17v3" stroke="currentColor" stroke-width="1.5"/></svg>',
+  thunderwave:    '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 16a4 4 0 004-4h-8a4 4 0 004 4z"/><path d="M12 20a8 8 0 008-8H4a8 8 0 008 8z" opacity="0.4"/></svg>',
+  arcane_orb:     '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="5"/><path d="M4 12h2M18 12h2" stroke="currentColor" stroke-width="1" stroke-dasharray="1 1"/></svg>',
+  force_wall:     '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="4" y="4" width="4" height="16" rx="1"/><rect x="10" y="3" width="4" height="18" rx="1"/><rect x="16" y="5" width="4" height="14" rx="1"/></svg>',
 }
 
 const FALLBACK = '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="6"/></svg>'

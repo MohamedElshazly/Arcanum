@@ -434,3 +434,301 @@ export class FrostDecalEffect implements IEffect {
     ;(this.mesh.material as THREE.MeshBasicMaterial).dispose()
   }
 }
+
+// ── Burning Hands — cone AOE in facing direction ─────────────────────────
+
+export class BurningHandsEffect implements IEffect {
+  alive = true
+  private cone: THREE.Mesh
+  private timer = 0
+  private readonly duration = 0.4
+  private damageApplied = false
+
+  constructor(
+    private readonly center: THREE.Vector3,
+    private readonly direction: THREE.Vector3,
+    private readonly enemies: Enemy[],
+    private readonly damage: number,
+    private readonly radius: number,
+    private readonly statusEffect: StatusEffect | undefined,
+    scene: THREE.Scene,
+  ) {
+    const geo = new THREE.ConeGeometry(radius * 0.6, radius, 8, 1, true)
+    const mat = new THREE.MeshStandardMaterial({
+      color:             new THREE.Color('#ff6600'),
+      emissive:          new THREE.Color('#ff4400'),
+      emissiveIntensity: 2.0,
+      transparent:       true,
+      opacity:           0.6,
+      side:              THREE.DoubleSide,
+    })
+    this.cone = new THREE.Mesh(geo, mat)
+    this.cone.position.copy(center)
+    this.cone.position.y = 0.5
+    const up = new THREE.Vector3(0, 1, 0)
+    const forward = direction.clone().normalize()
+    this.cone.quaternion.setFromUnitVectors(up, forward)
+    this.cone.position.addScaledVector(forward, radius * 0.5)
+    scene.add(this.cone)
+  }
+
+  update(delta: number, scene: THREE.Scene, _enemies: Enemy[]): void {
+    this.timer += delta
+    if (!this.damageApplied) {
+      this.applyDamage(scene)
+      this.damageApplied = true
+    }
+    const fade = 1 - this.timer / this.duration
+    ;(this.cone.material as THREE.MeshStandardMaterial).opacity = 0.6 * Math.max(0, fade)
+    if (this.timer >= this.duration) {
+      this.alive = false
+      this.dispose(scene)
+    }
+  }
+
+  private applyDamage(scene: THREE.Scene): void {
+    const r2 = this.radius * this.radius
+    for (const e of this.enemies) {
+      if (!e.alive) continue
+      const dx = e.position.x - this.center.x
+      const dz = e.position.z - this.center.z
+      const distSq = dx * dx + dz * dz
+      if (distSq > r2) continue
+      const dist = Math.sqrt(distSq)
+      if (dist < 0.01) {
+        e.takeDamage(this.damage, scene)
+        if (this.statusEffect) e.applyStatusEffect(this.statusEffect)
+        continue
+      }
+      const dot = (dx * this.direction.x + dz * this.direction.z) / dist
+      if (dot > 0.5) {
+        e.takeDamage(this.damage, scene)
+        if (this.statusEffect) e.applyStatusEffect(this.statusEffect)
+      }
+    }
+  }
+
+  dispose(scene: THREE.Scene): void {
+    scene.remove(this.cone)
+    this.cone.geometry.dispose()
+    ;(this.cone.material as THREE.MeshStandardMaterial).dispose()
+  }
+}
+
+// ── Cone of Cold — wider cone, freeze ────────────────────────────────────
+
+export class ConeOfColdEffect implements IEffect {
+  alive = true
+  private cone: THREE.Mesh
+  private timer = 0
+  private readonly duration = 0.5
+  private damageApplied = false
+
+  constructor(
+    private readonly center: THREE.Vector3,
+    private readonly direction: THREE.Vector3,
+    private readonly enemies: Enemy[],
+    private readonly damage: number,
+    private readonly radius: number,
+    private readonly statusEffect: StatusEffect | undefined,
+    scene: THREE.Scene,
+  ) {
+    const geo = new THREE.ConeGeometry(radius * 0.6, radius, 8, 1, true)
+    const mat = new THREE.MeshStandardMaterial({
+      color:             new THREE.Color('#aaddff'),
+      emissive:          new THREE.Color('#00ccff'),
+      emissiveIntensity: 2.0,
+      transparent:       true,
+      opacity:           0.6,
+      side:              THREE.DoubleSide,
+    })
+    this.cone = new THREE.Mesh(geo, mat)
+    this.cone.position.copy(center)
+    this.cone.position.y = 0.5
+    const up = new THREE.Vector3(0, 1, 0)
+    const forward = direction.clone().normalize()
+    this.cone.quaternion.setFromUnitVectors(up, forward)
+    this.cone.position.addScaledVector(forward, radius * 0.5)
+    scene.add(this.cone)
+  }
+
+  update(delta: number, scene: THREE.Scene, _enemies: Enemy[]): void {
+    this.timer += delta
+    if (!this.damageApplied) {
+      this.applyDamage(scene)
+      this.damageApplied = true
+    }
+    const fade = 1 - this.timer / this.duration
+    ;(this.cone.material as THREE.MeshStandardMaterial).opacity = 0.6 * Math.max(0, fade)
+    if (this.timer >= this.duration) {
+      this.alive = false
+      this.dispose(scene)
+    }
+  }
+
+  private applyDamage(scene: THREE.Scene): void {
+    const r2 = this.radius * this.radius
+    for (const e of this.enemies) {
+      if (!e.alive) continue
+      const dx = e.position.x - this.center.x
+      const dz = e.position.z - this.center.z
+      const distSq = dx * dx + dz * dz
+      if (distSq > r2) continue
+      const dist = Math.sqrt(distSq)
+      if (dist < 0.01) {
+        e.takeDamage(this.damage, scene)
+        if (this.statusEffect) e.applyStatusEffect(this.statusEffect)
+        continue
+      }
+      const dot = (dx * this.direction.x + dz * this.direction.z) / dist
+      if (dot > 0) {  // 90-degree arc
+        e.takeDamage(this.damage, scene)
+        if (this.statusEffect) e.applyStatusEffect(this.statusEffect)
+      }
+    }
+  }
+
+  dispose(scene: THREE.Scene): void {
+    scene.remove(this.cone)
+    this.cone.geometry.dispose()
+    ;(this.cone.material as THREE.MeshStandardMaterial).dispose()
+  }
+}
+
+// ── Thunderwave — self-centered AOE with knockback ───────────────────────
+
+export class ThunderwaveEffect implements IEffect {
+  alive = true
+  private ring: THREE.Mesh
+  private timer = 0
+  private readonly duration = 0.4
+
+  constructor(
+    position: THREE.Vector3,
+    enemies:  Enemy[],
+    damage:   number,
+    radius:   number,
+    statusEffect: StatusEffect | undefined,
+    scene:    THREE.Scene,
+  ) {
+    const r2 = radius * radius
+    for (const e of enemies) {
+      if (!e.alive) continue
+      const dx = e.position.x - position.x
+      const dz = e.position.z - position.z
+      if (dx * dx + dz * dz <= r2) {
+        e.takeDamage(damage, scene)
+        if (statusEffect) e.applyStatusEffect(statusEffect)
+      }
+    }
+
+    const geo = new THREE.TorusGeometry(radius * 0.9, 0.2, 8, 32)
+    const mat = new THREE.MeshStandardMaterial({
+      color:             0xffffff,
+      emissive:          new THREE.Color(0xffff88),
+      emissiveIntensity: 2.0,
+      transparent:       true,
+      opacity:           0.9,
+    })
+    this.ring = new THREE.Mesh(geo, mat)
+    this.ring.rotation.x = -Math.PI / 2
+    this.ring.position.set(position.x, 0.3, position.z)
+    scene.add(this.ring)
+  }
+
+  update(delta: number, scene: THREE.Scene, _enemies: Enemy[]): void {
+    this.timer += delta
+    ;(this.ring.material as THREE.MeshStandardMaterial).opacity =
+      0.9 * Math.max(0, 1 - this.timer / this.duration)
+    if (this.timer >= this.duration) {
+      this.alive = false
+      this.dispose(scene)
+    }
+  }
+
+  dispose(scene: THREE.Scene): void {
+    scene.remove(this.ring)
+    this.ring.geometry.dispose()
+    ;(this.ring.material as THREE.MeshStandardMaterial).dispose()
+  }
+}
+
+// ── Force Wall — wall of arcane energy at mouse position ─────────────────
+
+export class ForceWallEffect implements IEffect {
+  alive = true
+  private walls: THREE.Mesh[] = []
+  private timer = 0
+  private readonly duration: number
+  private readonly fadeStart: number
+  private readonly damage: number
+  private readonly hitEnemies = new Set<Enemy>()
+
+  constructor(
+    position:  THREE.Vector3,
+    direction: THREE.Vector3,
+    damage:    number,
+    duration:  number,
+    scene:     THREE.Scene,
+  ) {
+    this.damage = damage
+    this.duration = duration
+    this.fadeStart = duration - 0.5
+
+    const perp = new THREE.Vector3(-direction.z, 0, direction.x)
+    const offsets = [-1.2, 0, 1.2]
+    for (const offset of offsets) {
+      const geo = new THREE.BoxGeometry(0.6, 2.5, 0.3)
+      const mat = new THREE.MeshStandardMaterial({
+        color:             new THREE.Color('#dd88ff'),
+        emissive:          new THREE.Color('#aa00ff'),
+        emissiveIntensity: 1.5,
+        transparent:       true,
+        opacity:           0.7,
+      })
+      const wall = new THREE.Mesh(geo, mat)
+      wall.position.copy(position).addScaledVector(perp, offset)
+      wall.position.y = 1.25
+      wall.lookAt(wall.position.clone().addScaledVector(perp, 1))
+      scene.add(wall)
+      this.walls.push(wall)
+    }
+  }
+
+  update(delta: number, scene: THREE.Scene, enemies: Enemy[]): void {
+    this.timer += delta
+
+    for (const e of enemies) {
+      if (!e.alive || this.hitEnemies.has(e)) continue
+      for (const w of this.walls) {
+        const dx = e.position.x - w.position.x
+        const dz = e.position.z - w.position.z
+        if (Math.abs(dx) < 0.8 && Math.abs(dz) < 0.8) {
+          e.takeDamage(this.damage, scene)
+          this.hitEnemies.add(e)
+          break
+        }
+      }
+    }
+
+    if (this.timer >= this.fadeStart) {
+      const fade = 1 - (this.timer - this.fadeStart) / (this.duration - this.fadeStart)
+      for (const w of this.walls) {
+        ;(w.material as THREE.MeshStandardMaterial).opacity = 0.7 * Math.max(0, fade)
+      }
+    }
+    if (this.timer >= this.duration) {
+      this.alive = false
+      this.dispose(scene)
+    }
+  }
+
+  dispose(scene: THREE.Scene): void {
+    for (const w of this.walls) {
+      scene.remove(w)
+      w.geometry.dispose()
+      ;(w.material as THREE.MeshStandardMaterial).dispose()
+    }
+    this.walls = []
+  }
+}

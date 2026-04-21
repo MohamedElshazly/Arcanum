@@ -8,10 +8,10 @@ const ELEMENT_TO_BIOME: Record<SpellElement, BiomeType> = {
 }
 
 const ELEMENT_SPELLS: Record<SpellElement, string[]> = {
-  fire:      ['fireball', 'flame_lance', 'ember_shot', 'pyroblast'],
-  ice:       ['frost_bolt', 'frozen_nova', 'glacial_spike'],
-  lightning: ['chain_lightning', 'spark', 'thunder_clap'],
-  arcane:    ['arcane_missile', 'arcane_explosion', 'mana_siphon'],
+  fire:      ['fireball', 'flame_lance', 'ember_shot', 'pyroblast', 'meteor', 'burning_hands'],
+  ice:       ['frost_bolt', 'frozen_nova', 'glacial_spike', 'cone_of_cold'],
+  lightning: ['chain_lightning', 'spark', 'thunder_clap', 'ball_lightning', 'thunderwave'],
+  arcane:    ['arcane_missile', 'arcane_explosion', 'mana_siphon', 'arcane_orb'],
 }
 
 const ELEMENTS: SpellElement[] = ['fire', 'ice', 'lightning', 'arcane']

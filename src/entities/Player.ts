@@ -40,6 +40,11 @@ export class Player {
   dodgeCooldownTimer = 0
   private dodgeDir = new THREE.Vector3()
 
+  // Ice barrier shield
+  shieldHp    = 0
+  shieldTimer = 0
+  private shieldMesh: THREE.Mesh | null = null
+
   // Death animation
   isDying    = false
   deathTimer = 0
@@ -152,11 +157,24 @@ export class Player {
     }
 
     this.mana = Math.min(this.maxMana, this.mana  + MANA_REGEN_RATE * delta)
+
+    // Shield timer
+    if (this.shieldTimer > 0) {
+      this.shieldTimer -= delta
+      if (this.shieldTimer <= 0) this.removeShield()
+    }
   }
 
   takeDamage(amount: number): void {
     // if (import.meta.env.DEV) return
     if (this.isDodging) return  // i-frames during dodge
+    if (this.shieldHp > 0) {
+      const absorbed = Math.min(this.shieldHp, amount)
+      this.shieldHp -= absorbed
+      amount -= absorbed
+      if (this.shieldHp <= 0) this.removeShield()
+      if (amount <= 0) return
+    }
     this.hp = Math.max(0, this.hp - amount)
   }
 
@@ -205,6 +223,35 @@ export class Player {
     if (this.flasks >= this.maxFlasks) return false
     this.flasks += 1
     return true
+  }
+
+  activateShield(hp: number, duration: number): void {
+    this.shieldHp = hp
+    this.shieldTimer = duration
+    if (!this.shieldMesh) {
+      const geo = new THREE.SphereGeometry(PLAYER_RADIUS * 2, 16, 12)
+      const mat = new THREE.MeshStandardMaterial({
+        color:             new THREE.Color('#aaddff'),
+        emissive:          new THREE.Color('#00ffff'),
+        emissiveIntensity: 1.0,
+        transparent:       true,
+        opacity:           0.3,
+      })
+      this.shieldMesh = new THREE.Mesh(geo, mat)
+      this.shieldMesh.position.set(0, 0, 0)
+      this.mesh.add(this.shieldMesh)
+    }
+  }
+
+  private removeShield(): void {
+    if (this.shieldMesh) {
+      this.mesh.remove(this.shieldMesh)
+      this.shieldMesh.geometry.dispose()
+      ;(this.shieldMesh.material as THREE.MeshStandardMaterial).dispose()
+      this.shieldMesh = null
+    }
+    this.shieldHp = 0
+    this.shieldTimer = 0
   }
 
   startDying(): void {
