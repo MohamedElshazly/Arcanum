@@ -313,9 +313,6 @@ body {
   z-index: 1;
 }
 
-.loadout-page-left  { left: 5%;  width: 42%; }
-.loadout-page-right { left: 52%; width: 43%; }
-
 .loadout-page-left  { left: 5%;  width: 43%; }
 .loadout-page-right { left: 52%; width: 43%; }
 

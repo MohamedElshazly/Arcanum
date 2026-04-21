@@ -72,8 +72,6 @@ export const GRIMOIRE_DAMAGE_BONUS            = 0.15
 export const COLLECTED_BOOKS_MAX_VISIBLE = 5
 export const COLLECTED_BOOK_ICON_PX      = 48
 
-// ── Run Summary ──────────────────────────────────────────────────────────────
-export const RUN_SUMMARY_AUTO_DISMISS_S  = 10
 
 // ── Evolution overlay ────────────────────────────────────────────────────────
 export const EVOLUTION_OVERLAY_DURATION_S = 2.5
