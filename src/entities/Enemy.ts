@@ -154,7 +154,7 @@ export class Enemy {
     this.depth     = config.depth
     this.stats     = scaleEnemyStats(config.archetype, config.depth, config.difficultyMult)
 
-    // Apply boss variant multipliers before difficulty scaling
+    // Apply boss variant multipliers on top of scaled stats
     const variant = config.archetype === 'boss'
       ? BOSS_VARIANTS[config.bossVariant ?? 'archlich']
       : null
@@ -259,6 +259,10 @@ export class Enemy {
     scene.remove(this.mesh)
     this.mesh.geometry.dispose()
     ;(this.mesh.material as THREE.MeshStandardMaterial).dispose()
+    if (this.orbitalRing) {
+      this.orbitalRing.geometry.dispose()
+      ;(this.orbitalRing.material as THREE.MeshStandardMaterial).dispose()
+    }
     if (this.ghostMesh) { scene.remove(this.ghostMesh); this.ghostMesh = null }
   }
 
@@ -288,6 +292,10 @@ export class Enemy {
         scene.remove(this.mesh)
         this.mesh.geometry.dispose()
         mat.dispose()
+        if (this.orbitalRing) {
+          this.orbitalRing.geometry.dispose()
+          ;(this.orbitalRing.material as THREE.MeshStandardMaterial).dispose()
+        }
         if (this.ghostMesh) { scene.remove(this.ghostMesh); this.ghostMesh = null }
       }
       return []

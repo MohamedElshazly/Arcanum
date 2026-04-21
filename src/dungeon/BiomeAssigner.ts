@@ -3,8 +3,9 @@ import type { DungeonData, EnemySpawnData, RoomData } from './DungeonGenerator'
 import { getNeighborRoom } from './DungeonGenerator'
 import type { BiomeType } from './BiomeDefinitions'
 import type { BossVariant } from '../entities/Enemy'
+import { BOSS_VARIANTS } from '../entities/Enemy'
 
-const BOSS_VARIANT_KEYS: BossVariant[] = ['archlich', 'inferno_titan', 'storm_weaver']
+const BOSS_VARIANT_KEYS = Object.keys(BOSS_VARIANTS) as BossVariant[]
 
 const ELEMENT_TO_BIOME: Record<SpellElement, BiomeType> = {
   fire: 'fire', ice: 'ice', lightning: 'lightning', arcane: 'arcane',
