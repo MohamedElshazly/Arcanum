@@ -278,8 +278,7 @@ export class Game {
       runData:    this.runData,
       inventory:  this.inventory,
       reason,
-      onContinue: () => this.returnToLoadout(),
-      onOpenSpellbook: (spellPool) => this.openRewardSpellbook(spellPool),
+      onContinue: (collectedSpellPool) => this.showRewardPhase(collectedSpellPool),
     })
     this.runSummaryScreen.show()
   }
@@ -296,7 +295,9 @@ export class Game {
 
   // ── Reward spellbook ─────────────────────────────────────────────────────
 
-  private openRewardSpellbook(spellPool: string[]): void {
+  private showRewardPhase(spellPool: string[]): void {
+    if (this.runSummaryScreen) { this.runSummaryScreen.dispose(); this.runSummaryScreen = null }
+
     const root = document.getElementById('loadout-root') as HTMLDivElement
 
     const rewardBook = new Spellbook({
@@ -314,6 +315,7 @@ export class Game {
           }
         }
         rewardBook.dispose()
+        this.returnToLoadout()
       },
     })
     rewardBook.show()
