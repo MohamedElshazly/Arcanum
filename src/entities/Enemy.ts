@@ -6,6 +6,44 @@ import type { RoomBounds, Obstacle } from '../dungeon/Room'
 
 export type EnemyArchetype = 'apprentice' | 'battle_mage' | 'warlock' | 'boss'
 
+export type BossVariant = 'archlich' | 'inferno_titan' | 'storm_weaver'
+
+export interface BossVariantConfig {
+  name: string
+  meshColor: number
+  emissiveColor: number
+  geometry: [number, number, number, number] // [radiusTop, radiusBottom, height, segments]
+  hpMult: number
+  speedMult: number
+}
+
+export const BOSS_VARIANTS: Record<BossVariant, BossVariantConfig> = {
+  archlich: {
+    name: 'The Archlich',
+    meshColor: 0x110022,
+    emissiveColor: 0x8800cc,
+    geometry: [0.9, 1.1, 2.8, 6],
+    hpMult: 1.0,
+    speedMult: 1.0,
+  },
+  inferno_titan: {
+    name: 'Inferno Titan',
+    meshColor: 0x441100,
+    emissiveColor: 0xff4400,
+    geometry: [1.3, 1.5, 2.5, 8],
+    hpMult: 1.4,
+    speedMult: 0.8,
+  },
+  storm_weaver: {
+    name: 'Storm Weaver',
+    meshColor: 0x112244,
+    emissiveColor: 0x4488ff,
+    geometry: [0.6, 0.7, 3.2, 6],
+    hpMult: 0.8,
+    speedMult: 1.5,
+  },
+}
+
 export interface DifficultyStatMultipliers {
   enemyHp: number
   enemySpeed: number
@@ -19,6 +57,7 @@ export interface EnemyConfig {
   z: number
   depth: number
   difficultyMult?: DifficultyStatMultipliers
+  bossVariant?: BossVariant
 }
 
 export interface ScaledStats {
@@ -78,6 +117,7 @@ interface ActiveStatusEffect {
 export class Enemy {
   readonly mesh:     THREE.Mesh
   readonly position: THREE.Vector3
+  readonly bossName: string
   hp:    number
   maxHp: number
   alive  = true
@@ -113,22 +153,36 @@ export class Enemy {
     this.archetype = config.archetype
     this.depth     = config.depth
     this.stats     = scaleEnemyStats(config.archetype, config.depth, config.difficultyMult)
-    this.hp        = this.stats.hp
-    this.maxHp     = this.stats.hp
+
+    // Apply boss variant multipliers before difficulty scaling
+    const variant = config.archetype === 'boss'
+      ? BOSS_VARIANTS[config.bossVariant ?? 'archlich']
+      : null
+    this.bossName = variant?.name ?? ''
+
+    if (variant) {
+      this.hp    = Math.round(this.stats.hp * variant.hpMult)
+      this.maxHp = this.hp
+      this.stats = { ...this.stats, hp: this.hp, speed: this.stats.speed * variant.speedMult }
+    } else {
+      this.hp    = this.stats.hp
+      this.maxHp = this.stats.hp
+    }
 
     this.aggressionRange = 9999
 
     this.spells = config.spellIds.map(id => SPELLS[id]).filter(Boolean)
 
     if (config.archetype === 'boss') {
-      const geo = new THREE.CylinderGeometry(0.9, 1.1, 2.8, 6)
+      const vc = variant!
+      const geo = new THREE.CylinderGeometry(vc.geometry[0], vc.geometry[1], vc.geometry[2], vc.geometry[3])
       const mat = new THREE.MeshStandardMaterial({
-        color:             0x110022,
-        emissive:          new THREE.Color(0x8800cc),
+        color:             vc.meshColor,
+        emissive:          new THREE.Color(vc.emissiveColor),
         emissiveIntensity: 1.5,
       })
       this.mesh = new THREE.Mesh(geo, mat)
-      this.mesh.position.set(config.x, 1.4, config.z)
+      this.mesh.position.set(config.x, vc.geometry[2] / 2, config.z)
 
       const ringGeo = new THREE.TorusGeometry(1.8, 0.1, 8, 48)
       const ringMat = new THREE.MeshStandardMaterial({

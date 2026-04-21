@@ -2,6 +2,9 @@ import type { SpellElement } from '../spells/SpellDefinitions'
 import type { DungeonData, EnemySpawnData, RoomData } from './DungeonGenerator'
 import { getNeighborRoom } from './DungeonGenerator'
 import type { BiomeType } from './BiomeDefinitions'
+import type { BossVariant } from '../entities/Enemy'
+
+const BOSS_VARIANT_KEYS: BossVariant[] = ['archlich', 'inferno_titan', 'storm_weaver']
 
 const ELEMENT_TO_BIOME: Record<SpellElement, BiomeType> = {
   fire: 'fire', ice: 'ice', lightning: 'lightning', arcane: 'arcane',
@@ -159,11 +162,13 @@ export function assignBiomes(dungeon: DungeonData, rng: () => number, enemyCount
         const pool = ELEMENT_SPELLS[e].filter(s => !bossSpells.includes(s))
         if (pool.length > 0) bossSpells.push(pool[Math.floor(rng() * pool.length)])
       }
+      const variantIdx = Math.floor(rng() * BOSS_VARIANT_KEYS.length)
       room.enemies = [{
         archetype: 'boss',
         spellIds:  bossSpells,
         position:  { x: 0, z: -4 },
         depth:     room.depth,
+        bossVariant: BOSS_VARIANT_KEYS[variantIdx],
       }]
     } else {
       room.enemies = generateEnemies(room, el, rng, enemyCountMult)

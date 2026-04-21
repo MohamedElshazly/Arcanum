@@ -1,5 +1,6 @@
 import { mulberry32 } from '../utils/MathUtils'
 import type { BiomeType } from './BiomeDefinitions'
+import type { BossVariant } from '../entities/Enemy'
 
 export type RoomType = 'start' | 'normal' | 'elite' | 'rest' | 'boss'
 export type Direction = 'north' | 'south' | 'east' | 'west'
@@ -23,6 +24,7 @@ export interface EnemySpawnData {
   spellIds: string[]
   position: { x: number; z: number }
   depth: number
+  bossVariant?: BossVariant
 }
 
 export interface DungeonData {

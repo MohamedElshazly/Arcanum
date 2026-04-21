@@ -7,6 +7,7 @@ export interface BossHudInfo {
   hp: number
   maxHp: number
   phase: 1 | 2 | 3
+  name: string
 }
 
 export class HUD {
@@ -122,7 +123,7 @@ export class HUD {
     if (boss && boss.hp > 0) {
       this.bossBar.style.display  = 'block'
       this.bossHpFill.style.width = `${(boss.hp / boss.maxHp) * 100}%`
-      this.bossNameEl.textContent  = 'VOID LICH'
+      this.bossNameEl.textContent  = boss.name
       this.bossPhaseEl.textContent = `Phase ${['I', 'II', 'III'][boss.phase - 1]}`
     } else {
       this.bossBar.style.display = 'none'

@@ -305,7 +305,7 @@ export class Game {
       currentTime,
       this.session.dungeonData,
       this.session.currentRoomData?.id,
-      bossEnemy ? { hp: bossEnemy.hp, maxHp: bossEnemy.maxHp, phase: bossEnemy.phase } : null,
+      bossEnemy ? { hp: bossEnemy.hp, maxHp: bossEnemy.maxHp, phase: bossEnemy.phase, name: bossEnemy.bossName } : null,
       this.difficulty.name,
     )
     this.sceneManager.render()

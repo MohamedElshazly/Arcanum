@@ -213,7 +213,7 @@ export class DungeonSession {
       : undefined
 
     this.enemies = roomData.enemies.map(spawn =>
-      new Enemy({ archetype: spawn.archetype, spellIds: spawn.spellIds, x: spawn.position.x, z: spawn.position.z, depth: spawn.depth, difficultyMult: diffStatMult })
+      new Enemy({ archetype: spawn.archetype, spellIds: spawn.spellIds, x: spawn.position.x, z: spawn.position.z, depth: spawn.depth, difficultyMult: diffStatMult, bossVariant: spawn.bossVariant })
     )
     for (const e of this.enemies) scene.add(e.mesh)
 
