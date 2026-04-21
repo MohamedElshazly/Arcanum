@@ -119,14 +119,9 @@ export function generateDungeon(seed: number): DungeonData {
       .map(n => `${n.x},${n.y}`),
   )
 
-  const deadEnds = path.filter(p => {
-    const k = `${p.x},${p.y}`
-    return k !== startKey && k !== bossKey && connMap.get(k)!.size === 1
-  })
-  const restCount = Math.min(deadEnds.length, 1 + Math.floor(rng() * 2))
-  const restKeys  = new Set(
-    [...deadEnds].sort(() => rng() - 0.5).slice(0, restCount).map(p => `${p.x},${p.y}`),
-  )
+  // Place one shrine room adjacent to boss (the room just before boss on the path)
+  const preBossCell = path[path.length - 2]
+  const restKeys = new Set([`${preBossCell.x},${preBossCell.y}`])
 
   const rooms: RoomData[] = []
   for (const p of path) {
@@ -134,8 +129,8 @@ export function generateDungeon(seed: number): DungeonData {
     let type: RoomType
     if      (key === startKey)                          type = 'start'
     else if (key === bossKey)                           type = 'boss'
-    else if (bossAdjacentKeys.has(key))                 type = 'elite'
     else if (restKeys.has(key))                         type = 'rest'
+    else if (bossAdjacentKeys.has(key))                 type = 'elite'
     else                                                type = 'normal'
 
     const room: RoomData = {

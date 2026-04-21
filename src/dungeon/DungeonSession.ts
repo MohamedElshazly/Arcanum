@@ -143,8 +143,8 @@ export class DungeonSession {
 
     if (this.activeRoomData.type === 'rest' && !this.shrineUsed) {
       if (player.position.distanceTo(new THREE.Vector3(0, 0, 0)) < 2) {
-        player.hp    = Math.min(player.maxHp,   player.hp   + 30)
-        player.mana  = Math.min(player.maxMana,  player.mana + 30)
+        player.flasks = player.maxFlasks
+        player.mana   = Math.min(player.maxMana, player.mana + 30)
         this.shrineUsed = true
         this.flashPlayer(player)
       }
