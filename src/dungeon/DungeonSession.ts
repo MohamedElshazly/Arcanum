@@ -129,6 +129,9 @@ export class DungeonSession {
     for (const orb of this.orbs) {
       orb.update(delta, player.position)
     }
+    for (const orb of this.orbs) {
+      if (orb.collected) orb.dispose(scene)
+    }
     this.orbs = this.orbs.filter(o => !o.collected)
 
     this.hazards.update(delta, player, scene)
