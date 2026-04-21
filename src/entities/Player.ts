@@ -40,6 +40,11 @@ export class Player {
   dodgeCooldownTimer = 0
   private dodgeDir = new THREE.Vector3()
 
+  // Death animation
+  isDying    = false
+  deathTimer = 0
+  private readonly deathDuration = 1.2
+
   constructor() {
     const geo  = new THREE.CylinderGeometry(PLAYER_RADIUS, PLAYER_RADIUS, 1.5, 16)
     const mat  = new THREE.MeshStandardMaterial({
@@ -150,7 +155,7 @@ export class Player {
   }
 
   takeDamage(amount: number): void {
-    if (import.meta.env.DEV) return
+    // if (import.meta.env.DEV) return
     if (this.isDodging) return  // i-frames during dodge
     this.hp = Math.max(0, this.hp - amount)
   }
@@ -200,5 +205,29 @@ export class Player {
     if (this.flasks >= this.maxFlasks) return false
     this.flasks += 1
     return true
+  }
+
+  startDying(): void {
+    this.isDying = true
+    this.deathTimer = this.deathDuration
+    this.alive = false
+  }
+
+  updateDeath(delta: number): boolean {
+    this.deathTimer -= delta
+    const t = 1 - (this.deathTimer / this.deathDuration)
+
+    // Y-scale shrinks, X/Z expand
+    this.mesh.scale.set(1 + t * 1.0, 1 - t * 0.9, 1 + t * 1.0)
+
+    // Mesh sinks
+    this.mesh.position.y = 0.75 * (1 - t)
+
+    // Material fades
+    const mat = this.mesh.material as THREE.MeshStandardMaterial
+    mat.transparent = true
+    mat.opacity = 1 - t * 0.8
+
+    return this.deathTimer <= 0
   }
 }

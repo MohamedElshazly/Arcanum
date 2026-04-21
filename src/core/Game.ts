@@ -136,6 +136,12 @@ export class Game {
     this.player.isDodging = false
     this.player.dodgeTimer = 0
     this.player.dodgeCooldownTimer = 0
+    this.player.isDying = false
+    this.player.deathTimer = 0
+    this.player.mesh.scale.set(1, 1, 1)
+    const pmat = this.player.mesh.material as THREE.MeshStandardMaterial
+    pmat.transparent = false
+    pmat.opacity = 1
 
     const seed = Math.floor(Math.random() * 0xFFFFFF)
     this.session.init(this.sceneManager.scene, this.sceneManager, seed)
@@ -172,6 +178,16 @@ export class Game {
 
     const delta       = Math.min(this.clock.getDelta(), DELTA_CAP)
     const currentTime = this.clock.getElapsedTime()
+
+    // Death animation — skip all gameplay, just animate and render
+    if (this.player.isDying) {
+      if (this.player.updateDeath(delta)) {
+        this.endRun('death')
+      }
+      this.sceneManager.followPlayer(this.player.position)
+      this.sceneManager.render()
+      return
+    }
 
     this.inputManager.update()
 
@@ -275,8 +291,8 @@ export class Game {
     }
 
     // Death condition
-    if (this.player.hp <= 0) {
-      this.endRun('death')
+    if (this.player.hp <= 0 && !this.player.isDying) {
+      this.player.startDying()
     }
   }
 
