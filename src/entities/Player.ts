@@ -167,7 +167,7 @@ export class Player {
   }
 
   takeDamage(amount: number): void {
-    if (import.meta.env.DEV) return
+    // if (import.meta.env.DEV) return
     if (this.isDodging) return  // i-frames during dodge
     if (this.shieldHp > 0) {
       const absorbed = Math.min(this.shieldHp, amount)
