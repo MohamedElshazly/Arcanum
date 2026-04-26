@@ -9,6 +9,7 @@ import { HUD }           from '../ui/HUD'
 import { DungeonSession } from '../dungeon/DungeonSession'
 import { LoadoutScreen } from '../ui/LoadoutScreen'
 import { TitleScreen }   from '../ui/TitleScreen'
+import { initPortals, animatePortals, arrivedViaPortal } from '../portal/VibeJamPortals'
 
 import { EvolutionOverlay } from '../ui/EvolutionOverlay'
 import { RunSummaryScreen } from '../ui/RunSummaryScreen'
@@ -80,6 +81,9 @@ export class Game {
   private audioPreloadStarted = false
   private audioUnlocked        = false
 
+  // Vibe Jam portals
+  private portalsInitialized   = false
+
   // Run state
   private running  = false
   private rafId    = 0
@@ -117,7 +121,15 @@ export class Game {
     // Start downloading audio immediately — by the time the user finishes
     // reading the title screen the bytes are already on disk.
     this.beginAudioPreload()
-    this.showTitleScreen()
+
+    // Portal arrival — drop straight into the loadout screen, skipping the
+    // title moment. (Audio context will unlock on the player's first click
+    // inside the loadout screen via Howler's built-in interaction listener.)
+    if (arrivedViaPortal()) {
+      this.showLoadoutScreen()
+    } else {
+      this.showTitleScreen()
+    }
   }
 
   // ── TitleScreen ────────────────────────────────────────────────────────────
@@ -226,6 +238,20 @@ export class Game {
     this.activeEffects = []
     this.lastRoomCleared = false
 
+    // Vibe Jam 2026 portals — green exit portal beside the player, plus a red
+    // start portal at spawn if the player arrived via ?portal=true. Walking
+    // into them triggers a window.location redirect.
+    if (!this.portalsInitialized) {
+      this.portalsInitialized = true
+      initPortals({
+        scene:        this.sceneManager.scene,
+        getPlayer:    () => this.player.mesh,
+        spawnPoint:   { x:  0, y: 0.4, z: 0 },
+        exitPosition: { x:  6, y: 0.4, z: -2 },
+        exitLabel:    'VIBE JAM PORTAL',
+      })
+    }
+
     this.running = true
     this.inputManager.captureWheel = true
     this.clock.start()
@@ -243,6 +269,9 @@ export class Game {
 
     // Tick audio fades regardless of game-state branches.
     this.audio.music.update(delta)
+
+    // Tick Vibe Jam portal particles + collision check.
+    animatePortals()
 
     // Death animation — skip all gameplay, just animate and render
     if (this.player.isDying) {
