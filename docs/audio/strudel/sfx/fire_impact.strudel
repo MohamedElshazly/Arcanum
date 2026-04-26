@@ -4,15 +4,18 @@
 setcps(1.8)
 
 stack(
-  // Big low boom — body of the explosion
-  s("bd").bank("RolandTR909").gain(0.85).lpf(220).attack(0).release(0.5),
+  // Big low kick — main body of the explosion
+  s("bd").bank("RolandTR909").gain(1.0),
 
-  // Mid-range pitch-down hit
-  note("c2").s("sawtooth").gain(0.6).attack(0).release(0.4).lpf(800).pitch(sine.range(0, -12).fast(1.8)),
+  // Sub-rumble — short sawtooth thud
+  note("c1").s("sawtooth").gain(0.7).release(0.4).lpf(500),
+
+  // Mid-range body — gives the hit some mass
+  note("c2").s("square").gain(0.5).release(0.3).lpf(900).resonance(4),
 
   // Crackle tail — debris falling
-  s("hh*8").bank("RolandTR909").gain(0.4).hpf(3000).struct("1 1 1 ~ 1 ~ 1 ~"),
+  s("hh*8").bank("RolandTR909").gain(0.4).hpf(2800),
 
-  // Distorted snap on transient
-  s("cp").bank("RolandTR909").gain(0.5).hpf(1500)
+  // Sharp clap on transient
+  s("cp").bank("RolandTR909").gain(0.55).hpf(1200)
 )
