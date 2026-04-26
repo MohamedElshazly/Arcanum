@@ -1,0 +1,31 @@
+// Arcanum Strudel Template
+// =========================
+// Conventions for all biome and boss tracks:
+//   - BPM:    biomes 70-90, boss 110-130
+//   - Length: loops cleanly at 60-90 seconds
+//   - Tempo:  setcps(BPM / 60 / 4)  // Strudel uses cycles per second; 1 cycle = 4 beats
+//   - Output: stereo, 44.1kHz; record then convert to .ogg @ 96kbps via ffmpeg
+//
+// Biome palettes (suggested instruments):
+//   stone:     reverby bells, low pulse, sparse                      "tabla", "gm_choir_aahs"
+//   fire:      crackly textures, urgent hi-hats, warm bass           "gm_distortion_guitar", "tr909"
+//   ice:       crystalline plucks, sustained pads, slow filter sweeps "gm_celesta", "gm_pad_warm"
+//   lightning: stuttery hi-hats, glitchy squelches                   "gm_synth_drum", "wobblebass"
+//   arcane:    detuned chords, warbly leads, off-grid percussion     "gm_pad_choir", "tabla"
+//   void:      dissonant pads, deep sub-bass, sparse                 "gm_pad_halo", "sine"
+//   boss:      higher BPM, all four elemental textures briefly, drum-driven
+//
+// Composition skeleton — replace with your patterns:
+
+setcps(80 / 60 / 4)
+
+stack(
+  // drums / pulse
+  s("bd ~ ~ ~").bank("RolandTR909").gain(0.7),
+
+  // bass
+  note("c2 ~ ~ g2").s("sawtooth").lpf(400).gain(0.5),
+
+  // pad / lead
+  note("c4 eb4 g4 bb4").s("gm_pad_warm").gain(0.4).room(0.6)
+).slow(2)
