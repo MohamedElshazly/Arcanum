@@ -648,7 +648,7 @@ export class Enemy {
     })
     this.ghostMesh = new THREE.Mesh(ghostGeo, ghostMat)
     this.ghostMesh.position.copy(this.position)
-    this.ghostMesh.position.y += this.model.body.position.y // place ghost at body center
+    this.ghostMesh.position.y += this.bodyBaseY // place ghost at body center
     scene.add(this.ghostMesh)
     this.ghostTimer = 0.4
     this.position.copy(dest)
