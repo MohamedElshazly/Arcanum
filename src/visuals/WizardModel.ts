@@ -90,3 +90,10 @@ export function buildWizardModel(cfg: WizardModelConfig): WizardModel {
 
   return { root, body, head, hat, staff, orb }
 }
+
+export function disposeWizardModel(model: WizardModel): void {
+  for (const child of [model.body, model.head, model.hat, model.staff, model.orb]) {
+    child.geometry.dispose()
+    ;(child.material as THREE.MeshStandardMaterial).dispose()
+  }
+}

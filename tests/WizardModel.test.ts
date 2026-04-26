@@ -1,6 +1,6 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import * as THREE from 'three'
-import { buildWizardModel } from '../src/visuals/WizardModel'
+import { buildWizardModel, disposeWizardModel } from '../src/visuals/WizardModel'
 
 describe('buildWizardModel', () => {
   it('returns a Group with hat, head, robe, staff, orb children', () => {
@@ -34,5 +34,27 @@ describe('buildWizardModel', () => {
 
     expect(model.hat.position.y).toBeGreaterThan(model.head.position.y)
     expect(model.head.position.y).toBeGreaterThan(model.body.position.y)
+  })
+})
+
+describe('disposeWizardModel', () => {
+  it('disposes geometry and material of every child mesh', () => {
+    const model = buildWizardModel({
+      bodyColor: 0x224488, accentColor: 0x88ccff, hatColor: 0x111133,
+      orbColor: 0xaaddff, height: 1.5, radius: 0.4,
+    })
+
+    const geoms = [model.body, model.head, model.hat, model.staff, model.orb]
+      .map(m => m.geometry as THREE.BufferGeometry)
+    const mats = [model.body, model.head, model.hat, model.staff, model.orb]
+      .map(m => m.material as THREE.MeshStandardMaterial)
+
+    const geoSpies = geoms.map(g => vi.spyOn(g, 'dispose'))
+    const matSpies = mats.map(m => vi.spyOn(m, 'dispose'))
+
+    disposeWizardModel(model)
+
+    for (const s of geoSpies) expect(s).toHaveBeenCalledOnce()
+    for (const s of matSpies) expect(s).toHaveBeenCalledOnce()
   })
 })
