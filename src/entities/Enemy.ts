@@ -151,6 +151,9 @@ export class Enemy {
   private dying      = false
   private dyingTimer = 0
 
+  private idleTime = 0
+  private readonly bodyBaseY: number
+
   // Boss-specific
   private bossTrackedPhase: 1 | 2 | 3 = 1
   private bossPhaseBreak   = 0
@@ -204,6 +207,7 @@ export class Enemy {
     }
 
     this.originalEmissive = (this.model.body.material as THREE.MeshStandardMaterial).emissive.clone()
+    this.bodyBaseY = this.model.body.position.y
     this.position  = this.mesh.position
     this.castTimer = Math.random() * this.stats.castInterval
   }
@@ -302,6 +306,12 @@ export class Enemy {
 
     // ── Blink cooldown tick ──────────────────────────────────────────────
     if (this.blinkCooldown > 0) this.blinkCooldown -= delta
+
+    // ── Idle hover ──
+    this.idleTime += delta
+    const bobSpeed = this.archetype === 'boss' ? 1.5 : 2.5
+    this.model.body.position.y = this.bodyBaseY + Math.sin(this.idleTime * bobSpeed) * 0.05
+    this.model.orb.rotation.y += delta * 2
 
     // ── Status effect processing ─────────────────────────────────────────
     let speedMult  = 1.0

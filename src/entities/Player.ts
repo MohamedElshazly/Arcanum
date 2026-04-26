@@ -56,6 +56,9 @@ export class Player {
   deathTimer = 0
   private readonly deathDuration = 1.2
 
+  private idleTime = 0
+  private readonly bodyBaseY: number
+
   constructor() {
     this.model = buildWizardModel({
       bodyColor:         0xeeeeff,
@@ -72,6 +75,7 @@ export class Player {
     const bodyMat = this.model.body.material as THREE.MeshStandardMaterial
     this.originalBodyEmissive = bodyMat.emissive.clone()
     this.originalBodyEmissiveIntensity = bodyMat.emissiveIntensity
+    this.bodyBaseY = this.model.body.position.y
   }
 
   update(
@@ -81,6 +85,11 @@ export class Player {
     cameraAngle  = 0,
     obstacles: readonly Obstacle[] = [],
   ): void {
+    // ── Idle hover ──
+    this.idleTime += delta
+    this.model.body.position.y = this.bodyBaseY + Math.sin(this.idleTime * 3) * 0.04
+    this.model.orb.rotation.y += delta * 1.5
+
     // Dodge cooldown ticks always
     if (this.dodgeCooldownTimer > 0) this.dodgeCooldownTimer -= delta
 
