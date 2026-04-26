@@ -382,6 +382,10 @@ export class Enemy {
       this.orbitalRing.rotation.x = Math.PI / 2 + Math.sin(this.orbitalAngle * 0.5) * 0.4
       const rm = this.orbitalRing.material as THREE.MeshStandardMaterial
       rm.emissiveIntensity = 1.5 + (this.phase - 1) * 1.5
+
+      // Boss staff orb pulses harder per phase
+      const orbMat = this.model.orb.material as THREE.MeshStandardMaterial
+      orbMat.emissiveIntensity = 1.6 + (this.phase - 1) * 1.0 + Math.sin(this.idleTime * 6) * 0.4
     }
 
     // ── Ghost fade ────────────────────────────────────────────────────────
