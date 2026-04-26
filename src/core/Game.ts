@@ -127,6 +127,7 @@ export class Game {
       mastery:        this.mastery,
       grimoire:       this.grimoire,
       difficulty:     this.difficulty,
+      audio:          this.audio,
       onEnterDungeon: () => this.startRun(),
     })
     this.loadoutScreen.show()
@@ -403,6 +404,7 @@ export class Game {
       inventory: this.inventory,
       booksCollected: this.runData.collectedBooks.length,
       maxPicks: 3,
+      audio: this.audio,
       onConfirm: (result) => {
         if (result.claimedSpells) {
           for (const spellId of result.claimedSpells) {
