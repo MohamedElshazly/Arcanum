@@ -15,22 +15,15 @@ export interface IEffect {
 
 export function castBlink(
   position:      THREE.Vector3,
-  mesh:          THREE.Mesh,
+  player:        { position: THREE.Vector3; mesh: THREE.Object3D; setTint: (c: number, i?: number) => void; clearTint: () => void },
   lastDirection: THREE.Vector3,
 ): void {
   position.x += lastDirection.x * 5
   position.z += lastDirection.z * 5
-  mesh.position.copy(position)
+  player.mesh.position.copy(position)
 
-  const mat = mesh.material as THREE.MeshStandardMaterial
-  const savedEmissive    = mat.emissive.clone()
-  const savedIntensity   = mat.emissiveIntensity
-  mat.emissive.set(0xffffff)
-  mat.emissiveIntensity = 1
-  setTimeout(() => {
-    mat.emissive.copy(savedEmissive)
-    mat.emissiveIntensity = savedIntensity
-  }, 100)
+  player.setTint(0xffffff, 1)
+  setTimeout(() => player.clearTint(), 100)
 }
 
 // ── Frozen Nova ────────────────────────────────────────────────────────────

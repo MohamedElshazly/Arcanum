@@ -6,7 +6,7 @@ import type { Grimoire }      from '../progression/Grimoire'
 
 export interface Entity {
   position: THREE.Vector3
-  mesh:     THREE.Mesh
+  mesh:     THREE.Object3D
   alive:    boolean
 }
 
