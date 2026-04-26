@@ -1,0 +1,16 @@
+// utility — generic self-buff chime (blink, ice barrier, dodge etc). ~0.4s.
+// Element-neutral, gentle, positive-feeling. Record ONE cycle.
+// setcps(2.5) → 1 cycle ≈ 0.4s.
+
+setcps(2.5)
+
+stack(
+  // Bell triad — gentle ascending arpeggio
+  note("c5 e5 g5 c6").s("gm_glockenspiel").gain(0.5).room(0.5).attack(0).release(0.3),
+
+  // Sustained warm pad underneath
+  note("[c4,e4,g4]").s("gm_pad_warm").gain(0.35).attack(0.05).release(0.3).room(0.4),
+
+  // Soft whoosh — feels like activation
+  s("noise").gain(0.18).attack(0.05).release(0.3).bpf(3500).resonance(3)
+)

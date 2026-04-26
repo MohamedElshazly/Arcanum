@@ -1,0 +1,15 @@
+// fire_cast — short whoosh, rising heat. ~0.35s.
+// setcps(2.85) → 1 cycle ≈ 0.35s. Record ONE cycle.
+
+setcps(2.85)
+
+stack(
+  // Rising filter sweep — warm noise body
+  s("noise").gain(0.6).attack(0.05).release(0.25).lpf(sine.range(400, 3500).fast(2.85)),
+
+  // Crackle attack — short transient
+  s("hh*4").bank("RolandTR909").gain(0.3).hpf(2500).struct("1 1 ~ ~"),
+
+  // Sub-thump on the strike
+  s("bd").bank("RolandTR909").gain(0.4).lpf(200)
+)

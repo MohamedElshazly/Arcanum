@@ -1,0 +1,29 @@
+// Ice biome — "Frost coats every surface. Your breath fogs the air."
+// Crystalline plucks, sustained pads, slow filter sweeps. BPM 70.
+// Record ~85 seconds (≈25 cycles) then trim to bar boundary.
+
+setcps(70 / 60 / 4)
+
+stack(
+  // Sparse pulse — subtle low thump beneath everything
+  s("bd:5").gain(0.3).lpf(150).struct("1 ~ ~ ~ ~ ~ ~ ~"),
+
+  // Crystalline pluck — main melodic motif
+  note("<c5 eb5 g5 bb5 c6 g5 eb5 c5>").s("gm_celesta").gain(0.4).room(0.7).delay(0.3).delaytime(0.375).delayfeedback(0.4),
+
+  // Slow filter-swept pad — feels like a frozen wind
+  note("<c3 ab2>")
+    .s("gm_pad_warm")
+    .gain(0.4)
+    .room(0.85)
+    .attack(2)
+    .release(4)
+    .lpf(sine.range(400, 1800).slow(8))
+    .resonance(4),
+
+  // High glassy harmonic — rare flutter
+  note("<g6 ~ ~ ~ c7 ~ ~ ~>").s("gm_glockenspiel").gain(0.22).room(0.9).delay(0.6).slow(2),
+
+  // Sub-bass drone — rooted in C
+  note("c2").s("sine").gain(0.35).attack(2).release(2).slow(4)
+)

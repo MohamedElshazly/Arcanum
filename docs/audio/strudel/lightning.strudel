@@ -1,0 +1,35 @@
+// Lightning biome — "Static fills the air. Every surface hums with charge."
+// Stuttery hi-hats, glitchy squelches, electric energy. BPM 90.
+// Record ~75 seconds (≈22 cycles) then trim to bar boundary.
+
+setcps(90 / 60 / 4)
+
+stack(
+  // Punchy kick — drives the rhythm
+  s("bd ~ ~ bd").bank("RolandTR909").gain(0.65),
+
+  // Glitchy hi-hat stutters — rapid 16ths with random rests
+  s("hh*16").bank("RolandTR808").gain(0.3).hpf(2400).sometimesBy(0.4, x => x.gain(0)),
+
+  // Snappy clap on backbeat
+  s("~ cp ~ cp").bank("RolandTR909").gain(0.45).hpf(1200),
+
+  // Squelchy bass — wobbles via LFO on filter
+  note("<e2 e2 g2 a2>")
+    .s("sawtooth")
+    .gain(0.5)
+    .lpf(sine.range(300, 1500).fast(2))
+    .resonance(12)
+    .struct("1 ~ 1 1 ~ 1 ~ 1"),
+
+  // Static crackle — fast noise bursts
+  s("hh*32").bank("RolandTR909").gain(0.18).hpf(4000).struct("1 ~ ~ 1 ~ ~ 1 ~ 1 ~ ~ ~ 1 ~ 1 ~"),
+
+  // Electric synth lead — sharp angular notes
+  note("<g4 b4 d5 g5 ~ b5 ~ d5>")
+    .s("square")
+    .gain(0.35)
+    .lpf(2200)
+    .delay(0.4).delaytime(0.1875).delayfeedback(0.5)
+    .struct("1 ~ 1 ~ ~ 1 ~ 1")
+)

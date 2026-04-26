@@ -1,0 +1,25 @@
+// Fire biome — "The air shimmers with heat. The walls weep molten rock."
+// Crackly textures, urgent hi-hats, warm bass. BPM 88.
+// Record ~75 seconds (≈22 cycles) then trim to bar boundary.
+
+setcps(88 / 60 / 4)
+
+stack(
+  // Driving 909 kick — pushes the heartbeat hard
+  s("bd ~ bd ~ bd bd ~ bd").bank("RolandTR909").gain(0.7).lpf(180),
+
+  // Crackle layer — short white-noise pops sit above the kick
+  s("hh*8").bank("RolandTR909").gain(0.35).hpf(2200).pan(sine.range(-0.3, 0.3).slow(2)),
+
+  // Open hat accents — every other cycle
+  s("~ ~ ~ oh").bank("RolandTR909").gain(0.4).hpf(1800).every(2, x => x.fast(2)),
+
+  // Warm sub-bass — root drone with movement
+  note("<c2 c2 ab1 g1>").s("sawtooth").lpf(380).resonance(8).gain(0.55).attack(0.05).release(0.6),
+
+  // Distorted guitar stab — short bursts in odd places
+  note("<c3 ~ ~ eb3 ~ g3 ~ ~>").s("gm_distortion_guitar").gain(0.4).room(0.4).struct("1 ~ ~ 1 ~ 1 ~ ~"),
+
+  // High shimmer — flickering ember tone
+  note("<c5 eb5 g5 c6>").s("gm_celesta").gain(0.18).room(0.6).delay(0.5).struct("1 ~ 1 ~ ~ 1 ~ 1").slow(2)
+)

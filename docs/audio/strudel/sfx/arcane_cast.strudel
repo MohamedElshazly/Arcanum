@@ -1,0 +1,18 @@
+// arcane_cast — ethereal warble, otherworldly hum. ~0.4s.
+// setcps(2.5) → 1 cycle ≈ 0.4s. Record ONE cycle.
+
+setcps(2.5)
+
+stack(
+  // Detuned dyad — main body, warbly via vib
+  note("g4 c5").s("sine").gain(0.55).attack(0.05).release(0.3).vib(8).vibmod(0.5).detune(0.3),
+
+  // Choir whisper — dreamlike pad
+  note("c4").s("gm_pad_choir").gain(0.4).attack(0.08).release(0.3).room(0.6),
+
+  // High shimmer — magical sparkle
+  note("c6 g6 e6").s("gm_celesta").gain(0.3).room(0.7).delay(0.2).delaytime(0.05),
+
+  // Whoosh tail
+  s("noise").gain(0.25).attack(0.05).release(0.3).bpf(2000).resonance(4)
+)

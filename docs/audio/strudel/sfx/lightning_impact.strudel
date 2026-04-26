@@ -1,0 +1,21 @@
+// lightning_impact — thunder crack with sustained rumble. ~0.55s.
+// setcps(1.8) → 1 cycle ≈ 0.55s. Record ONE cycle.
+
+setcps(1.8)
+
+stack(
+  // Thunder crack — sharp high transient
+  s("noise").gain(0.85).attack(0).release(0.1).hpf(3500).bpf(5000).resonance(6),
+
+  // Low body rumble — fades over the full cycle
+  note("e1").s("sawtooth").gain(0.6).attack(0).release(0.5).lpf(180),
+
+  // Mid-frequency electric burn
+  note("e3").s("square").gain(0.45).attack(0).release(0.4).lpf(1200).resonance(8),
+
+  // Sub-thump on strike
+  s("bd:5").gain(0.55).lpf(150),
+
+  // Crackling tail — random hi-hats
+  s("hh*12").bank("RolandTR909").gain(0.3).hpf(2800).struct("1 ~ 1 ~ 1 1 ~ ~ ~ 1 ~ ~")
+)

@@ -1,0 +1,21 @@
+// arcane_impact — reality-bending thud + reverse swell. ~0.55s.
+// setcps(1.8) → 1 cycle ≈ 0.55s. Record ONE cycle.
+
+setcps(1.8)
+
+stack(
+  // Reversed cymbal swell — builds into the hit
+  s("crash").gain(0.5).rev().room(0.6).attack(0).release(0.5),
+
+  // Detuned synth thud — body of the impact
+  note("c2 g2").s("sawtooth").gain(0.65).attack(0).release(0.4).lpf(500).resonance(6).detune(0.4),
+
+  // Choir burst — dreamlike accent
+  note("[c4,eb4,g4]").s("gm_pad_choir").gain(0.45).attack(0).release(0.45).room(0.5),
+
+  // High dissonant ping
+  note("<c6 db6>").s("gm_glockenspiel").gain(0.3).attack(0).release(0.3).room(0.7),
+
+  // Sub thump
+  s("bd:7").gain(0.5).lpf(160)
+)

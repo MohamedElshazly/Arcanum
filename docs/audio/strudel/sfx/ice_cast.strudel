@@ -1,0 +1,15 @@
+// ice_cast — crystalline ping rising into release. ~0.4s.
+// setcps(2.5) → 1 cycle ≈ 0.4s. Record ONE cycle.
+
+setcps(2.5)
+
+stack(
+  // Crystalline ping — main body
+  note("c6 g6").s("gm_celesta").gain(0.7).room(0.6).attack(0).release(0.3),
+
+  // High shimmer harmonic
+  note("c7").s("gm_glockenspiel").gain(0.4).room(0.7).attack(0).release(0.25),
+
+  // Subtle wind hiss — frosty texture
+  s("noise").gain(0.2).hpf(4000).attack(0.05).release(0.3)
+)

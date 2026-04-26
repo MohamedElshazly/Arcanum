@@ -1,0 +1,67 @@
+// Boss fight — high-stakes confrontation
+// Higher BPM, all four elemental textures layered briefly, drum-driven. BPM 124.
+// Record ~75 seconds (≈39 cycles) then trim to bar boundary.
+
+setcps(124 / 60 / 4)
+
+stack(
+  // Pounding floor-tom + kick driving the fight
+  s("bd ~ bd bd ~ bd bd ~").bank("RolandTR909").gain(0.75),
+
+  // Snare on 2 and 4
+  s("~ sd ~ sd").bank("RolandTR909").gain(0.6).hpf(800),
+
+  // Aggressive 16th hi-hats with occasional opens
+  s("hh*16").bank("RolandTR909").gain(0.32).hpf(2000),
+  s("~ ~ ~ ~ ~ ~ oh ~").bank("RolandTR909").gain(0.45),
+
+  // Driving bass riff — minor key, urgent
+  note("<e2 e2 g2 e2 ~ e2 b2 g2>")
+    .s("sawtooth")
+    .gain(0.6)
+    .lpf(700)
+    .resonance(6)
+    .attack(0.01).release(0.2),
+
+  // Ominous brass stabs — every 4 cycles
+  note("<[e3,g3,b3] ~ ~ ~ ~ ~ ~ ~>")
+    .s("gm_brass_section")
+    .gain(0.55)
+    .room(0.4)
+    .attack(0.05)
+    .release(0.6)
+    .slow(2),
+
+  // Fire texture — distorted guitar tail (cycles in/out via fast(0.25))
+  note("<e4 g4 b4 e5>")
+    .s("gm_distortion_guitar")
+    .gain(0.25)
+    .room(0.5)
+    .struct("1 ~ ~ ~ ~ ~ 1 ~")
+    .slow(2),
+
+  // Ice texture — cold celesta accent
+  note("<g5 ~ ~ b5 ~ ~ e6 ~>")
+    .s("gm_celesta")
+    .gain(0.22)
+    .room(0.7)
+    .delay(0.4)
+    .slow(2),
+
+  // Lightning texture — square-wave zaps
+  note("<e5 ~ b5 ~>")
+    .s("square")
+    .gain(0.18)
+    .lpf(3000)
+    .struct("1 ~ ~ ~ 1 ~ ~ ~")
+    .slow(4),
+
+  // Arcane texture — choir undercurrent
+  note("<e3 b2 g2 a2>")
+    .s("gm_pad_choir")
+    .gain(0.3)
+    .room(0.7)
+    .attack(1)
+    .release(2)
+    .slow(2)
+)

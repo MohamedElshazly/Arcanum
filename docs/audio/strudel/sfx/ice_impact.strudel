@@ -1,0 +1,18 @@
+// ice_impact — sharp shatter, glass debris. ~0.5s.
+// setcps(2) → 1 cycle ≈ 0.5s. Record ONE cycle.
+
+setcps(2)
+
+stack(
+  // Initial crack — sharp transient
+  s("cp").bank("RolandTR909").gain(0.7).hpf(2000),
+
+  // Glass shatter — high noise burst with quick filter sweep
+  s("noise").gain(0.55).attack(0).release(0.45).hpf(sine.range(2500, 6000).fast(2)).bpf(4000).resonance(8),
+
+  // Crystalline shards falling — random pings
+  note("<c7 a6 e7 g6 b6 d7>*6").s("gm_glockenspiel").gain(0.35).room(0.5).attack(0).release(0.2),
+
+  // Sub thump — body of impact
+  s("bd:3").gain(0.4).lpf(180)
+)

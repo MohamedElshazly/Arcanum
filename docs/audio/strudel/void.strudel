@@ -1,0 +1,38 @@
+// Void biome — "Something ancient waits here. The air tastes of endings."
+// Dissonant pads, deep sub-bass, sparse — feels of dread. BPM 65.
+// Record ~90 seconds (≈25 cycles) then trim to bar boundary.
+
+setcps(65 / 60 / 4)
+
+stack(
+  // Massive sub-drone — barely-audible foundation
+  note("c1").s("sine").gain(0.5).attack(4).release(4).slow(8),
+
+  // Dissonant choir cluster — minor 2nd / tritone tension
+  note("<[c3,db3,fs3] [bb2,b2,e3] [ab2,a2,d3]>")
+    .s("gm_pad_halo")
+    .gain(0.4)
+    .room(0.95)
+    .attack(3)
+    .release(5)
+    .lpf(900),
+
+  // Sparse rumble hit — heavy, rare
+  s("bd:8").gain(0.55).lpf(120).struct("1 ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~"),
+
+  // Reversed cymbal swell — only every 4 cycles
+  s("crash").gain(0.3).rev().room(0.9).struct("1 ~ ~ ~ ~ ~ ~ ~").slow(4),
+
+  // Whispered high noise — wind from somewhere outside reality
+  s("noise").gain(0.12).hpf(5000).lpf(8000).attack(2).release(3).slow(3),
+
+  // Glassy ping — appears and disappears
+  note("<c5 ~ ~ ~ ~ ~ b4 ~ ~ ~ ~ ~ a4 ~ ~ ~>")
+    .s("gm_glockenspiel")
+    .gain(0.18)
+    .room(0.95)
+    .delay(0.7)
+    .delaytime(0.5)
+    .delayfeedback(0.6)
+    .slow(2)
+)

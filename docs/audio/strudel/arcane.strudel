@@ -1,0 +1,40 @@
+// Arcane biome — "Reality feels thin here. Magic bends in unexpected ways."
+// Detuned chords, warbly leads, off-grid percussion. BPM 78.
+// Record ~80 seconds (≈26 cycles) then trim to bar boundary.
+
+setcps(78 / 60 / 4)
+
+stack(
+  // Off-grid hand-percussion — feels slightly wrong on purpose
+  s("tabla*5").bank("Tabla").gain(0.35).speed("1 0.92 1.05 0.88 1.1"),
+
+  // Detuned choir pad — root drift
+  note("<c3 ab2 eb3 f3>")
+    .s("gm_pad_choir")
+    .gain(0.45)
+    .room(0.8)
+    .attack(1.5)
+    .release(3)
+    .detune(0.15),
+
+  // Warbly lead — heavy vibrato, off-time entries
+  note("<g4 bb4 ~ d5 ~ f5 eb5 ~ c5 ~ ab4 ~>")
+    .s("gm_lead_5_charang")
+    .gain(0.32)
+    .room(0.5)
+    .vib(6).vibmod(0.3)
+    .struct("1 ~ ~ 1 ~ 1 1 ~ 1 ~ 1 ~"),
+
+  // Low rumble — distant power
+  note("c1").s("sine").gain(0.3).attack(3).release(3).slow(8),
+
+  // Sparse high bell — rings at unexpected times
+  note("<c6 ~ eb6 ~ ~ g6 ~ ~ ~ bb5 ~ ~>")
+    .s("gm_tinkle_bell")
+    .gain(0.25)
+    .room(0.85)
+    .delay(0.5)
+    .delaytime(0.32)
+    .delayfeedback(0.55)
+    .slow(2)
+)

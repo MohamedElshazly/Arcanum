@@ -1,0 +1,18 @@
+// lightning_cast — sharp electric zap, fast charge-up. ~0.3s.
+// setcps(3.3) → 1 cycle ≈ 0.3s. Record ONE cycle.
+
+setcps(3.3)
+
+stack(
+  // Charge-up sweep — square wave rising fast
+  note("g3 g6").s("square").gain(0.5).attack(0).release(0.25).lpf(sine.range(400, 4000).fast(3.3)),
+
+  // Static crackle — granular
+  s("hh*16").bank("RolandTR909").gain(0.3).hpf(3500).sometimesBy(0.4, x => x.gain(0)),
+
+  // Snap transient
+  s("cp").bank("RolandTR909").gain(0.45).hpf(2000),
+
+  // Brief sub-zap
+  note("g2").s("sawtooth").gain(0.5).attack(0).release(0.15).lpf(600)
+)

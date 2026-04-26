@@ -1,0 +1,18 @@
+// fire_impact — explosive hit, low body + crackle. ~0.55s.
+// setcps(1.8) → 1 cycle ≈ 0.55s. Record ONE cycle.
+
+setcps(1.8)
+
+stack(
+  // Big low boom — body of the explosion
+  s("bd").bank("RolandTR909").gain(0.85).lpf(220).attack(0).release(0.5),
+
+  // Mid-range pitch-down hit
+  note("c2").s("sawtooth").gain(0.6).attack(0).release(0.4).lpf(800).pitch(sine.range(0, -12).fast(1.8)),
+
+  // Crackle tail — debris falling
+  s("hh*8").bank("RolandTR909").gain(0.4).hpf(3000).struct("1 1 1 ~ 1 ~ 1 ~"),
+
+  // Distorted snap on transient
+  s("cp").bank("RolandTR909").gain(0.5).hpf(1500)
+)
