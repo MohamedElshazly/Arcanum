@@ -16,15 +16,20 @@ describe('Player composite model', () => {
     expect(p.mesh.children.length).toBe(5)
   })
 
-  it('setTint mutates the body emissive; clearTint restores it', () => {
+  it('setTint changes exactly one child mesh (the body) emissive', () => {
     const p = new Player()
-    const body = p.mesh.children.find(c => (c as THREE.Mesh).geometry instanceof THREE.CylinderGeometry) as THREE.Mesh
-    const mat  = body.material as THREE.MeshStandardMaterial
-    const original = mat.emissive.getHex()
+    const meshes = p.mesh.children.filter(c => c instanceof THREE.Mesh) as THREE.Mesh[]
+    const originals = meshes.map(m => (m.material as THREE.MeshStandardMaterial).emissive.getHex())
 
     p.setTint(0x00ff00, 1)
-    expect(mat.emissive.getHex()).toBe(0x00ff00)
+
+    const tinted = meshes.filter(m => (m.material as THREE.MeshStandardMaterial).emissive.getHex() === 0x00ff00)
+    expect(tinted.length).toBe(1)
+
     p.clearTint()
-    expect(mat.emissive.getHex()).toBe(original)
+
+    for (let i = 0; i < meshes.length; i++) {
+      expect((meshes[i].material as THREE.MeshStandardMaterial).emissive.getHex()).toBe(originals[i])
+    }
   })
 })

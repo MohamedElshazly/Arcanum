@@ -5,6 +5,14 @@ import type { StatusEffect } from './SpellDefinitions'
 
 // ── Shared interface for time-tracked effects ──────────────────────────────
 
+/** Minimal surface needed for cast effects that tint the caster. */
+export interface TintableCaster {
+  position: THREE.Vector3
+  mesh:     THREE.Object3D
+  setTint(color: number, intensity?: number): void
+  clearTint(): void
+}
+
 export interface IEffect {
   alive: boolean
   update(delta: number, scene: THREE.Scene, enemies: Enemy[]): void
@@ -15,7 +23,7 @@ export interface IEffect {
 
 export function castBlink(
   position:      THREE.Vector3,
-  player:        { position: THREE.Vector3; mesh: THREE.Object3D; setTint: (c: number, i?: number) => void; clearTint: () => void },
+  player:        TintableCaster,
   lastDirection: THREE.Vector3,
 ): void {
   position.x += lastDirection.x * 5
