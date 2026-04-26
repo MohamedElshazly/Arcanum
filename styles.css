@@ -1065,8 +1065,10 @@ body {
   z-index: 100;
   background: rgba(0,0,0,0.88);
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 12px;
   opacity: 0;
   transition: opacity 0.3s ease;
 }
@@ -1395,6 +1397,48 @@ body {
   font-size: 11px;
   color: var(--sb-empty-text);
   font-style: italic;
+}
+
+/* ── In-book Difficulty Selector ──────────────────────────────── */
+.spellbook-difficulty {
+  position: relative;
+  z-index: 2;
+  margin-top: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 8px 0;
+  font-family: 'Cinzel', serif;
+  color: var(--sb-text);
+  font-size: 13px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+.spellbook-difficulty-arrow {
+  background: transparent;
+  border: 1px solid var(--sb-accent);
+  color: var(--sb-text);
+  font-size: 14px;
+  width: 28px;
+  height: 28px;
+  border-radius: 4px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s, opacity 0.15s;
+}
+.spellbook-difficulty-arrow:hover:not(:disabled) {
+  background: var(--sb-btn-hover);
+}
+.spellbook-difficulty-arrow:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+.spellbook-difficulty-label {
+  min-width: 180px;
+  text-align: center;
 }
 
 /* ── Confirm Button ───────────────────────────────────────────── */

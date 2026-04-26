@@ -4,6 +4,7 @@ import { AudioPanel } from './AudioPanel'
 import type { PlayerInventory } from '../progression/PlayerInventory'
 import type { MasterySystem } from '../progression/MasterySystem'
 import type { Grimoire } from '../progression/Grimoire'
+import type { DifficultySystem } from '../progression/DifficultySystem'
 import type { Audio } from '../audio'
 
 export interface SpellbookResult {
@@ -21,6 +22,7 @@ export interface SpellbookConfig {
   booksCollected?: number
   maxPicks?: number
   audio?: Audio
+  difficulty?: DifficultySystem
   onConfirm: (context: SpellbookResult) => void
 }
 
@@ -334,6 +336,11 @@ export class Spellbook {
       page.appendChild(passivesSection)
     }
 
+    // Difficulty selector — only on the player loadout view, immediately before the confirm button
+    if (this.config.difficulty) {
+      page.appendChild(this.buildDifficultySelector(this.config.difficulty))
+    }
+
     // Confirm button
     const btn = document.createElement('button')
     btn.className = 'spellbook-confirm-btn'
@@ -342,6 +349,37 @@ export class Spellbook {
       this.config.onConfirm({ type: 'enter_dungeon' })
     })
     page.appendChild(btn)
+  }
+
+  private buildDifficultySelector(diff: DifficultySystem): HTMLDivElement {
+    const wrap = document.createElement('div')
+    wrap.className = 'spellbook-difficulty'
+
+    const left = document.createElement('button')
+    left.className = 'spellbook-difficulty-arrow'
+    left.textContent = '◀'
+
+    const label = document.createElement('span')
+    label.className = 'spellbook-difficulty-label'
+
+    const right = document.createElement('button')
+    right.className = 'spellbook-difficulty-arrow'
+    right.textContent = '▶'
+
+    const refresh = () => {
+      label.textContent = `${diff.name}  ·  Lv ${diff.level}`
+      left.disabled  = diff.level <= 0
+      right.disabled = diff.level >= diff.maxUnlocked
+    }
+
+    left.addEventListener('click',  () => { diff.level = diff.level - 1; refresh() })
+    right.addEventListener('click', () => { diff.level = diff.level + 1; refresh() })
+    refresh()
+
+    wrap.appendChild(left)
+    wrap.appendChild(label)
+    wrap.appendChild(right)
+    return wrap
   }
 
   private buildLoadoutBar(page: HTMLElement, bar: 1 | 2, label: string): void {

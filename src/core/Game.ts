@@ -77,7 +77,8 @@ export class Game {
 
   // Audio
   readonly audio: Audio = createAudio()
-  private audioInitialized = false
+  private audioPreloadStarted = false
+  private audioUnlocked        = false
 
   // Run state
   private running  = false
@@ -113,6 +114,9 @@ export class Game {
     this.grimoire.load()
     this.hud.init()
     this.sceneManager.scene.add(this.player.mesh)
+    // Start downloading audio immediately — by the time the user finishes
+    // reading the title screen the bytes are already on disk.
+    this.beginAudioPreload()
     this.showTitleScreen()
   }
 
@@ -122,7 +126,8 @@ export class Game {
     this.titleScreen = new TitleScreen({
       root: document.getElementById('title-root') as HTMLElement,
       onBegin: () => {
-        this.initAudioOnce()
+        // Unlock here — first user gesture, satisfies browser autoplay policy.
+        this.unlockAudio()
         if (this.titleScreen) { this.titleScreen.dispose(); this.titleScreen = null }
         this.showLoadoutScreen()
       },
@@ -130,15 +135,21 @@ export class Game {
     this.titleScreen.show()
   }
 
-  /** Eager-preload SFX + all music + unlock audio context. Idempotent. */
-  private initAudioOnce(): void {
-    if (this.audioInitialized) return
-    this.audioInitialized = true
+  /** Eager-preload SFX + all music. Pure download, no user gesture needed. Idempotent. */
+  private beginAudioPreload(): void {
+    if (this.audioPreloadStarted) return
+    this.audioPreloadStarted = true
     void (async () => {
       await this.audio.sfx.preloadAll()
       await this.audio.music.preload(['stone', 'fire', 'ice', 'lightning', 'arcane', 'void', 'boss'])
-      await this.audio.music.unlock()
     })()
+  }
+
+  /** Resume the AudioContext. Must be called from a user-gesture handler. Idempotent. */
+  private unlockAudio(): void {
+    if (this.audioUnlocked) return
+    this.audioUnlocked = true
+    void this.audio.music.unlock()
   }
 
   // ── LoadoutScreen ──────────────────────────────────────────────────────────
@@ -163,9 +174,10 @@ export class Game {
   // ── Start run ─────────────────────────────────────────────────────────────
 
   private startRun(): void {
-    // Audio is preloaded + unlocked when the title screen's BEGIN button fires.
-    // This is a defensive fallback in case startRun is reached without going through it.
-    this.initAudioOnce()
+    // Audio preload kicks off in start(); unlock fires on BEGIN button.
+    // This pair is a defensive fallback in case startRun is reached without going through them.
+    this.beginAudioPreload()
+    this.unlockAudio()
 
     if (this.loadoutScreen) { this.loadoutScreen.dispose(); this.loadoutScreen = null }
 
