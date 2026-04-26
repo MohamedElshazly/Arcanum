@@ -1716,3 +1716,9 @@ body {
   margin: 0 0.2em;
 }
 
+/* ── Custom spell-wand cursor on the game canvas ───────────────────────── */
+#game-canvas,
+#game-canvas canvas {
+  cursor: url('/cursor-wand.svg') 6 6, crosshair;
+}
+
