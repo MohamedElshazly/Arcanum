@@ -3,6 +3,7 @@ import { Spell, SPELLS } from './SpellDefinitions'
 import { Projectile }    from '../entities/Projectile'
 import type { MasterySystem } from '../progression/MasterySystem'
 import type { Grimoire }      from '../progression/Grimoire'
+import type { SfxManager }    from '../audio/SfxManager'
 
 export interface Entity {
   position: THREE.Vector3
@@ -22,6 +23,7 @@ export class SpellCaster {
   private manaSrc:   { mana: number }
   private mastery:   MasterySystem | null
   private grimoire:  Grimoire | null
+  private sfx:       SfxManager | null = null
 
   constructor(
     manaSrc:  { mana: number },
@@ -32,6 +34,8 @@ export class SpellCaster {
     this.mastery  = mastery
     this.grimoire = grimoire
   }
+
+  setSfx(sfx: SfxManager): void { this.sfx = sfx }
 
   clearCooldowns(): void {
     this.cooldowns.clear()
@@ -62,11 +66,20 @@ export class SpellCaster {
     this.cooldowns.set(spell.id, currentTime)
     this.mastery?.recordCast(spell.id)
 
+    if (this.sfx) {
+      const phase = spell.type === 'self' ? 'utility' : 'cast'
+      this.sfx.play(spell.element, phase)
+      // AOE: layer impact 50ms after cast for body
+      if (spell.type === 'aoe') {
+        setTimeout(() => this.sfx?.play(spell.element, 'impact'), 50)
+      }
+    }
+
     if (spell.type === 'projectile') {
       const dir    = direction ?? this.directionToNearest(targets, caster.position)
       const origin = caster.position.clone().setY(0.75)
       const effectiveSpell = this.applyDamageBonus(spell)
-      const proj   = new Projectile(origin, dir, effectiveSpell, scene)
+      const proj   = new Projectile(origin, dir, effectiveSpell, scene, 0, this.sfx ?? undefined)
 
       if (spell.id === 'chain_lightning') {
         const extra = Math.round(this.grimoire?.getPassiveValue('lightning_chain_bounces') ?? 0)

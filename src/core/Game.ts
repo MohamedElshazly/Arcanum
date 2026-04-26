@@ -97,6 +97,7 @@ export class Game {
 
     this.spellBar    = new SpellBar()
     this.spellCaster = new SpellCaster(this.player, this.mastery, this.grimoire)
+    this.spellCaster.setSfx(this.audio.sfx)
     this.hud         = new HUD()
 
     this.evolutionOverlay = new EvolutionOverlay(
@@ -555,7 +556,7 @@ export class Game {
             const to   = nextTarget.position.clone()
             this.activeEffects.push(new LightningBoltEffect(from, to, this.sceneManager.scene))
             const jumpDir = new THREE.Vector3().subVectors(to, from).setY(0).normalize()
-            const jumpProj = new Projectile(from.setY(0.75), jumpDir, proj.spell, this.sceneManager.scene, proj.jumpsRemaining - 1)
+            const jumpProj = new Projectile(from.setY(0.75), jumpDir, proj.spell, this.sceneManager.scene, proj.jumpsRemaining - 1, this.audio.sfx)
             this.projectiles.push(jumpProj)
           }
         }
