@@ -53,6 +53,22 @@ describe('MusicManager', () => {
     expect(backend.activeFor('music:fire')).not.toBeNull()
   })
 
+  it('crossfadeTo while a fade is in progress stops the previous fade cleanly', async () => {
+    await mm.preload(['stone', 'fire', 'ice'])
+    await mm.unlock()
+    mm.play('stone')
+    mm.crossfadeTo('fire', 1.0)
+    // mid-fade
+    mm.update(0.3)
+    // interrupt with another crossfade
+    mm.crossfadeTo('ice', 1.0)
+    mm.update(1.0)
+    // only ice should be playing
+    expect(backend.activeFor('music:stone')).toBeNull()
+    expect(backend.activeFor('music:fire')).toBeNull()
+    expect(backend.activeFor('music:ice')).not.toBeNull()
+  })
+
   it('stopWithSilence() fades current track and leaves nothing playing', async () => {
     await mm.preload(['stone'])
     await mm.unlock()

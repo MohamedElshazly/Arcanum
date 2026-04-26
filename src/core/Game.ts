@@ -346,6 +346,7 @@ export class Game {
     if (this.player.hp <= 0 && !this.player.isDying) {
       this.player.startDying()
       this.audio.music.stopWithSilence(0.3)
+      this.session.cancelBossMusicTimer()
     }
   }
 

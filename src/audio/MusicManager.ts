@@ -69,6 +69,8 @@ export class MusicManager {
     }
     if (this.current?.track === track) return  // already playing this track
 
+    this.cancelFade()  // stop any in-flight fade so we don't leak instances
+
     const incomingInstance = this.backend.play(fileId(track), { loop: true, volume: 0 })
     const incoming: ActiveTrack = { track, instance: incomingInstance, baseVolume: 0 }
 
@@ -139,15 +141,38 @@ export class MusicManager {
   }
 
   private stopAllImmediately(): void {
-    if (this.current) {
-      this.backend.stop(this.current.instance)
-      this.current = null
+    const stopped = new Set<InstanceId>()
+    const stop = (id: InstanceId) => {
+      if (!stopped.has(id)) {
+        this.backend.stop(id)
+        stopped.add(id)
+      }
     }
-    if (this.fade?.outgoing) {
-      this.backend.stop(this.fade.outgoing.active.instance)
+    if (this.current) stop(this.current.instance)
+    if (this.fade?.outgoing) stop(this.fade.outgoing.active.instance)
+    if (this.fade?.incoming) stop(this.fade.incoming.active.instance)
+    this.current = null
+    this.fade = null
+  }
+
+  /** Stop both sides of any in-progress fade. Caller is responsible for setting up the new state afterward. */
+  private cancelFade(): void {
+    if (!this.fade) return
+    const stopped = new Set<InstanceId>()
+    const stop = (id: InstanceId) => {
+      if (!stopped.has(id)) {
+        this.backend.stop(id)
+        stopped.add(id)
+      }
     }
-    if (this.fade?.incoming && this.fade.incoming.active !== this.current) {
-      this.backend.stop(this.fade.incoming.active.instance)
+    // Stop both sides of the in-progress fade EXCEPT the one that is also `this.current`
+    // (the caller — e.g. crossfadeTo — preserves `this.current` so it can fade it out again).
+    const currentInstance = this.current?.instance
+    if (this.fade.outgoing && this.fade.outgoing.active.instance !== currentInstance) {
+      stop(this.fade.outgoing.active.instance)
+    }
+    if (this.fade.incoming && this.fade.incoming.active.instance !== currentInstance) {
+      stop(this.fade.incoming.active.instance)
     }
     this.fade = null
   }

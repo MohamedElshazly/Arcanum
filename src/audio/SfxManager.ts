@@ -17,7 +17,11 @@ export class SfxManager {
 
   play(element: SpellElement, phase: SfxPhase): void {
     const src = sfxFile(element, phase)
-    this.backend.play(fileId(src), { loop: false, volume: this.effectiveVolume() })
+    try {
+      this.backend.play(fileId(src), { loop: false, volume: this.effectiveVolume() })
+    } catch (err) {
+      console.warn('SfxManager.play: failed to play', src, err)
+    }
   }
 
   private effectiveVolume(): number {

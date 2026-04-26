@@ -9,8 +9,8 @@ const ALL_IDS = [
 ]
 
 describe('SpellDefinitions', () => {
-  it('defines exactly 16 spells', () => {
-    expect(Object.keys(SPELLS).length).toBe(16)
+  it('defines exactly 24 spells', () => {
+    expect(Object.keys(SPELLS).length).toBe(24)
   })
 
   it.each(ALL_IDS)('spell %s has base fields', (id) => {

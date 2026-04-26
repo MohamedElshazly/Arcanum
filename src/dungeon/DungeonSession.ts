@@ -50,9 +50,18 @@ export class DungeonSession {
   onOrbCollected: ((spellIds: string[]) => void) | null = null
 
   private music: MusicManager | null = null
+  private bossMusicTimer: ReturnType<typeof setTimeout> | null = null
 
   setMusicManager(music: MusicManager): void {
     this.music = music
+  }
+
+  /** Cancel any pending boss-music timer. Call when silencing music or resetting the run. */
+  cancelBossMusicTimer(): void {
+    if (this.bossMusicTimer !== null) {
+      clearTimeout(this.bossMusicTimer)
+      this.bossMusicTimer = null
+    }
   }
 
   init(scene: THREE.Scene, sm: SceneManager, seed: number, diffMultipliers?: DifficultyMultipliers): void {
@@ -105,7 +114,11 @@ export class DungeonSession {
             if (this.activeRoomData.type === 'boss' && this.music) {
               void this.music.preload(['boss'])
               this.music.stopWithSilence(0.5)
-              setTimeout(() => this.music?.play('boss'), 900)
+              if (this.bossMusicTimer !== null) clearTimeout(this.bossMusicTimer)
+              this.bossMusicTimer = setTimeout(() => {
+                this.bossMusicTimer = null
+                this.music?.play('boss')
+              }, 900)
             }
           }
           this.activeRoomData.visited = true
@@ -120,6 +133,7 @@ export class DungeonSession {
     this.transitionState = 'idle'
     this.fadeTimer       = 0
     this.pendingDir      = null
+    this.cancelBossMusicTimer()
     this.setOverlayOpacity(0)
   }
 
@@ -207,6 +221,7 @@ export class DungeonSession {
     const nextData = getNeighborRoom(this.dungeon.grid, this.activeRoomData, dir)
     if (!nextData) return
 
+    this.cancelBossMusicTimer()
     this.clearRoom(scene)
     this.activateRoom(nextData, scene, OPPOSITE_DIR[dir])
 
