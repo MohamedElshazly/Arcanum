@@ -1,6 +1,5 @@
 import { SPELLS } from '../spells/SpellDefinitions'
 import { getSpellIcon, ELEMENT_GRADIENTS } from './SpellIcons'
-import { AudioPanel } from './AudioPanel'
 import type { PlayerInventory } from '../progression/PlayerInventory'
 import type { MasterySystem } from '../progression/MasterySystem'
 import type { Grimoire } from '../progression/Grimoire'
@@ -75,13 +74,6 @@ export class Spellbook {
     overlay.appendChild(book)
     root.appendChild(overlay)
     root.classList.add('visible')
-
-    // Audio panel (mounted inside the overlay so it persists for the lifetime
-    // of this Spellbook view). Skipped if no Audio instance was supplied.
-    if (this.config.audio) {
-      const panel = new AudioPanel(this.config.audio).element
-      overlay.appendChild(panel)
-    }
 
     // Trigger fade-in animation
     requestAnimationFrame(() => overlay.classList.add('open'))
