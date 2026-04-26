@@ -3,6 +3,9 @@ import { SPELLS }  from '../spells/SpellDefinitions'
 import type { Spell, StatusEffect, StatusEffectType } from '../spells/SpellDefinitions'
 import { Projectile } from './Projectile'
 import type { RoomBounds, Obstacle } from '../dungeon/Room'
+import { buildWizardModel, disposeWizardModel } from '../visuals/WizardModel'
+import type { WizardModel } from '../visuals/WizardModel'
+import { getEnemyModelConfig } from '../visuals/EnemyModelConfig'
 
 export type EnemyArchetype = 'apprentice' | 'battle_mage' | 'warlock' | 'boss'
 
@@ -119,7 +122,7 @@ interface ActiveStatusEffect {
 }
 
 export class Enemy {
-  readonly mesh:     THREE.Mesh
+  readonly mesh:     THREE.Group
   readonly position: THREE.Vector3
   readonly bossName: string
   hp:    number
@@ -142,10 +145,14 @@ export class Enemy {
   // Status effects
   private statusEffects: ActiveStatusEffect[] = []
   private readonly originalEmissive: THREE.Color
+  private readonly model: WizardModel
 
   // Death animation
   private dying      = false
   private dyingTimer = 0
+
+  private idleTime = 0
+  private readonly bodyBaseY: number
 
   // Boss-specific
   private bossTrackedPhase: 1 | 2 | 3 = 1
@@ -177,17 +184,17 @@ export class Enemy {
 
     this.spells = config.spellIds.map(id => SPELLS[id]).filter(Boolean)
 
+    const dominantColor = this.dominantColor()
+    this.model = buildWizardModel(getEnemyModelConfig(
+      config.archetype,
+      dominantColor,
+      config.bossVariant,
+    ))
+    this.mesh = this.model.root
+    this.mesh.position.set(config.x, 0, config.z)
+
     if (config.archetype === 'boss') {
       const vc = variant!
-      const geo = new THREE.CylinderGeometry(vc.geometry[0], vc.geometry[1], vc.geometry[2], vc.geometry[3])
-      const mat = new THREE.MeshStandardMaterial({
-        color:             vc.meshColor,
-        emissive:          new THREE.Color(vc.emissiveColor),
-        emissiveIntensity: 1.5,
-      })
-      this.mesh = new THREE.Mesh(geo, mat)
-      this.mesh.position.set(config.x, vc.geometry[2] / 2, config.z)
-
       const ringGeo = new THREE.TorusGeometry(1.8, 0.1, 8, 48)
       const ringMat = new THREE.MeshStandardMaterial({
         color:             0xaa44ff,
@@ -195,32 +202,12 @@ export class Enemy {
         emissiveIntensity: 2,
       })
       this.orbitalRing = new THREE.Mesh(ringGeo, ringMat)
+      this.orbitalRing.position.y = vc.geometry[2] / 2
       this.mesh.add(this.orbitalRing)
-    } else if (config.archetype === 'warlock') {
-      // Triangle shape — cone with 3 radial segments
-      const geo = new THREE.ConeGeometry(0.7, 2.0, 3)
-      const color = this.dominantColor()
-      const mat = new THREE.MeshStandardMaterial({
-        color,
-        emissive:          new THREE.Color(color).multiplyScalar(0.6),
-        emissiveIntensity: 1.8,
-      })
-      this.mesh = new THREE.Mesh(geo, mat)
-      this.mesh.position.set(config.x, 1.0, config.z)
-    } else {
-      const isLarge = config.archetype === 'battle_mage'
-      const geo     = new THREE.BoxGeometry(0.8, isLarge ? 1.8 : 1.2, 0.8)
-      const color   = this.dominantColor()
-      const mat     = new THREE.MeshStandardMaterial({
-        color,
-        emissive:          new THREE.Color(0x222222),
-        emissiveIntensity: 1.0,
-      })
-      this.mesh     = new THREE.Mesh(geo, mat)
-      this.mesh.position.set(config.x, isLarge ? 0.9 : 0.6, config.z)
     }
 
-    this.originalEmissive = (this.mesh.material as THREE.MeshStandardMaterial).emissive.clone()
+    this.originalEmissive = (this.model.body.material as THREE.MeshStandardMaterial).emissive.clone()
+    this.bodyBaseY = this.model.body.position.y
     this.position  = this.mesh.position
     this.castTimer = Math.random() * this.stats.castInterval
   }
@@ -261,8 +248,7 @@ export class Enemy {
     this.dying  = false
     this.clearTelegraph(scene)
     scene.remove(this.mesh)
-    this.mesh.geometry.dispose()
-    ;(this.mesh.material as THREE.MeshStandardMaterial).dispose()
+    disposeWizardModel(this.model)
     if (this.orbitalRing) {
       this.orbitalRing.geometry.dispose()
       ;(this.orbitalRing.material as THREE.MeshStandardMaterial).dispose()
@@ -293,14 +279,15 @@ export class Enemy {
       const t = Math.min(this.dyingTimer / 0.4, 1)
       const s = 1 - t
       this.mesh.scale.set(s, s, s)
-      const mat = this.mesh.material as THREE.MeshStandardMaterial
-      mat.transparent = true
-      mat.opacity     = 1 - t
+      for (const child of [this.model.body, this.model.head, this.model.hat, this.model.staff, this.model.orb]) {
+        const cm = child.material as THREE.MeshStandardMaterial
+        cm.transparent = true
+        cm.opacity     = 1 - t
+      }
       if (this.dyingTimer >= 0.4) {
         this.alive = false
         scene.remove(this.mesh)
-        this.mesh.geometry.dispose()
-        mat.dispose()
+        disposeWizardModel(this.model)
         if (this.orbitalRing) {
           this.orbitalRing.geometry.dispose()
           ;(this.orbitalRing.material as THREE.MeshStandardMaterial).dispose()
@@ -319,6 +306,12 @@ export class Enemy {
 
     // ── Blink cooldown tick ──────────────────────────────────────────────
     if (this.blinkCooldown > 0) this.blinkCooldown -= delta
+
+    // ── Idle hover ──
+    this.idleTime += delta
+    const bobSpeed = this.archetype === 'boss' ? 1.5 : 2.5
+    this.model.body.position.y = this.bodyBaseY + Math.sin(this.idleTime * bobSpeed) * 0.05
+    this.model.orb.rotation.y += delta * 2
 
     // ── Status effect processing ─────────────────────────────────────────
     let speedMult  = 1.0
@@ -371,13 +364,13 @@ export class Enemy {
     }
 
     // Visual feedback — emissive tint based on highest-priority active effect
-    const mat = this.mesh.material as THREE.MeshStandardMaterial
+    const bodyMat = this.model.body.material as THREE.MeshStandardMaterial
 
-    if (isFrozen)            mat.emissive.setHex(0x00ccff)
-    else if (hasBurning)     mat.emissive.setHex(0xff6600)
-    else if (isStunned)      mat.emissive.setHex(0xffffff)
-    else if (hasSlow)        mat.emissive.setHex(0x4444ff)
-    else                     mat.emissive.copy(this.originalEmissive)
+    if (isFrozen)            bodyMat.emissive.setHex(0x00ccff)
+    else if (hasBurning)     bodyMat.emissive.setHex(0xff6600)
+    else if (isStunned)      bodyMat.emissive.setHex(0xffffff)
+    else if (hasSlow)        bodyMat.emissive.setHex(0x4444ff)
+    else                     bodyMat.emissive.copy(this.originalEmissive)
 
     // Freeze/stun: skip all AI (movement + casting + blink)
     if (isFrozen || isStunned) return []
@@ -389,6 +382,10 @@ export class Enemy {
       this.orbitalRing.rotation.x = Math.PI / 2 + Math.sin(this.orbitalAngle * 0.5) * 0.4
       const rm = this.orbitalRing.material as THREE.MeshStandardMaterial
       rm.emissiveIntensity = 1.5 + (this.phase - 1) * 1.5
+
+      // Boss staff orb pulses harder per phase
+      const orbMat = this.model.orb.material as THREE.MeshStandardMaterial
+      orbMat.emissiveIntensity = 1.6 + (this.phase - 1) * 1.0 + Math.sin(this.idleTime * 6) * 0.4
     }
 
     // ── Ghost fade ────────────────────────────────────────────────────────
@@ -646,14 +643,16 @@ export class Enemy {
   }
 
   private executeBlink(dest: THREE.Vector3, scene: THREE.Scene): void {
-    const ghostGeo = this.mesh.geometry.clone()
+    const ghostGeo = this.model.body.geometry.clone()
+    const bodyMat  = this.model.body.material as THREE.MeshStandardMaterial
     const ghostMat = new THREE.MeshStandardMaterial({
-      color:       (this.mesh.material as THREE.MeshStandardMaterial).color.clone(),
+      color:       bodyMat.color.clone(),
       transparent: true,
       opacity:     0.8,
     })
-    this.ghostMesh  = new THREE.Mesh(ghostGeo, ghostMat)
+    this.ghostMesh = new THREE.Mesh(ghostGeo, ghostMat)
     this.ghostMesh.position.copy(this.position)
+    this.ghostMesh.position.y += this.bodyBaseY // place ghost at body center
     scene.add(this.ghostMesh)
     this.ghostTimer = 0.4
     this.position.copy(dest)

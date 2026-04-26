@@ -248,10 +248,8 @@ export class DungeonSession {
   }
 
   private flashPlayer(player: Player): void {
-    const mat = player.mesh.material as THREE.MeshStandardMaterial
-    mat.emissive.set(0x00ff44)
-    mat.emissiveIntensity = 1
-    setTimeout(() => { mat.emissive.set(0x222222); mat.emissiveIntensity = 0 }, 300)
+    player.setTint(0x00ff44, 1)
+    setTimeout(() => player.clearTint(), 300)
   }
 
   private showBiomeDescription(room: RoomData): void {

@@ -137,7 +137,7 @@ export class Game {
 
     this.player.hp       = this.player.maxHp
     this.player.mana     = this.player.maxMana
-    this.player.position.set(0, 0.75, 0)
+    this.player.position.set(0, 0, 0)
     this.player.flasks    = this.player.maxFlasks
     this.player.isHealing = false
     this.player.healTimer = 0
@@ -149,9 +149,8 @@ export class Game {
     this.player.alive = true
     this.player.deathTimer = 0
     this.player.mesh.scale.set(1, 1, 1)
-    const pmat = this.player.mesh.material as THREE.MeshStandardMaterial
-    pmat.transparent = false
-    pmat.opacity = 1
+    this.player.setOpacity(1)
+    this.player.clearTint()
 
     const seed = Math.floor(Math.random() * 0xFFFFFF)
     this.session.init(this.sceneManager.scene, this.sceneManager, seed, this.difficulty.getMultipliers())
@@ -443,7 +442,7 @@ export class Game {
 
     switch (spellId) {
       case 'blink':
-        castBlink(this.player.position, this.player.mesh, this.player.lastDirection)
+        castBlink(this.player.position, this.player, this.player.lastDirection)
         break
       case 'frozen_nova':
         this.activeEffects.push(new FrozenNovaEffect(pos, enemies, SPELLS.frozen_nova.damage, scene, SPELLS.frozen_nova.statusEffect))

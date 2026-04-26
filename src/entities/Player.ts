@@ -3,6 +3,8 @@ import { PLAYER_SPEED, PLAYER_RADIUS, MANA_REGEN_RATE } from '../constants'
 import type { InputManager } from '../core/InputManager'
 import type { RoomBounds }   from '../dungeon/Room'
 import type { Obstacle }     from '../dungeon/Room'
+import { buildWizardModel, disposeWizardModel } from '../visuals/WizardModel'
+import type { WizardModel } from '../visuals/WizardModel'
 
 const FLASK_CAST_TIME = 1.0
 const DODGE_DURATION  = 0.2   // seconds of roll
@@ -10,9 +12,13 @@ const DODGE_DISTANCE  = 4.0   // units travelled during roll
 const DODGE_COOLDOWN  = 1.5   // seconds between dodges
 
 export class Player {
-  readonly mesh: THREE.Mesh
+  readonly mesh: THREE.Group
   /** Alias for mesh.position — same object reference. */
   readonly position: THREE.Vector3
+
+  private readonly model: WizardModel
+  private readonly originalBodyEmissive: THREE.Color
+  private readonly originalBodyEmissiveIntensity: number
 
   hp      = 150
   maxHp   = 150
@@ -50,15 +56,26 @@ export class Player {
   deathTimer = 0
   private readonly deathDuration = 1.2
 
+  private idleTime = 0
+  private readonly bodyBaseY: number
+
   constructor() {
-    const geo  = new THREE.CylinderGeometry(PLAYER_RADIUS, PLAYER_RADIUS, 1.5, 16)
-    const mat  = new THREE.MeshStandardMaterial({
-      color:   0xffffff,
-      emissive: new THREE.Color(0x222222),
+    this.model = buildWizardModel({
+      bodyColor:         0xeeeeff,
+      accentColor:       0xffffff,
+      hatColor:          0x222244,
+      orbColor:          0xaaccff,
+      height:            1.5,
+      radius:            PLAYER_RADIUS,
+      emissiveIntensity: 0.3,
     })
-    this.mesh  = new THREE.Mesh(geo, mat)
-    this.mesh.position.set(0, 0.75, 0)
+    this.mesh = this.model.root
+    this.mesh.position.set(0, 0, 0)
     this.position = this.mesh.position
+    const bodyMat = this.model.body.material as THREE.MeshStandardMaterial
+    this.originalBodyEmissive = bodyMat.emissive.clone()
+    this.originalBodyEmissiveIntensity = bodyMat.emissiveIntensity
+    this.bodyBaseY = this.model.body.position.y
   }
 
   update(
@@ -68,6 +85,11 @@ export class Player {
     cameraAngle  = 0,
     obstacles: readonly Obstacle[] = [],
   ): void {
+    // ── Idle hover ──
+    this.idleTime += delta
+    this.model.body.position.y = this.bodyBaseY + Math.sin(this.idleTime * 3) * 0.04
+    this.model.orb.rotation.y += delta * 1.5
+
     // Dodge cooldown ticks always
     if (this.dodgeCooldownTimer > 0) this.dodgeCooldownTimer -= delta
 
@@ -82,9 +104,7 @@ export class Player {
         this.isDodging = false
         this.dodgeTimer = 0
         // Restore normal appearance
-        const mat = this.mesh.material as THREE.MeshStandardMaterial
-        mat.opacity = 1
-        mat.transparent = false
+        this.setOpacity(1)
       }
 
       // Still clamp bounds and obstacles during dodge
@@ -112,8 +132,7 @@ export class Player {
         this.isHealing = false
         this.healTimer = 0
         // Remove green tint
-        const mat = this.mesh.material as THREE.MeshStandardMaterial
-        mat.emissive.set(0x222222)
+        this.clearTint()
       }
       return  // Cannot move or act while healing
     }
@@ -202,9 +221,7 @@ export class Player {
     this.dodgeCooldownTimer = DODGE_COOLDOWN
 
     // Ghost effect during dodge
-    const mat = this.mesh.material as THREE.MeshStandardMaterial
-    mat.transparent = true
-    mat.opacity = 0.4
+    this.setOpacity(0.4)
 
     return true
   }
@@ -215,8 +232,7 @@ export class Player {
     this.isHealing = true
     this.healTimer = FLASK_CAST_TIME
     // Green tint during heal
-    const mat = this.mesh.material as THREE.MeshStandardMaterial
-    mat.emissive.set(0x003300)
+    this.setTint(0x003300, 1)
     return true
   }
 
@@ -239,7 +255,7 @@ export class Player {
         opacity:           0.3,
       })
       this.shieldMesh = new THREE.Mesh(geo, mat)
-      this.shieldMesh.position.set(0, 0, 0)
+      this.shieldMesh.position.set(0, 0.75, 0)
       this.mesh.add(this.shieldMesh)
     }
   }
@@ -269,13 +285,35 @@ export class Player {
     this.mesh.scale.set(1 + t * 1.0, 1 - t * 0.9, 1 + t * 1.0)
 
     // Mesh sinks
-    this.mesh.position.y = 0.75 * (1 - t)
+    this.mesh.position.y = -0.4 * t
 
     // Material fades
-    const mat = this.mesh.material as THREE.MeshStandardMaterial
-    mat.transparent = true
-    mat.opacity = 1 - t * 0.8
+    this.setOpacity(1 - t * 0.8)
 
     return this.deathTimer <= 0
+  }
+
+  setTint(color: number, intensity = 1): void {
+    const mat = this.model.body.material as THREE.MeshStandardMaterial
+    mat.emissive.setHex(color)
+    mat.emissiveIntensity = intensity
+  }
+
+  clearTint(): void {
+    const mat = this.model.body.material as THREE.MeshStandardMaterial
+    mat.emissive.copy(this.originalBodyEmissive)
+    mat.emissiveIntensity = this.originalBodyEmissiveIntensity
+  }
+
+  setOpacity(opacity: number): void {
+    for (const child of [this.model.body, this.model.head, this.model.hat, this.model.staff, this.model.orb]) {
+      const m = child.material as THREE.MeshStandardMaterial
+      m.transparent = opacity < 1
+      m.opacity = opacity
+    }
+  }
+
+  disposeModel(): void {
+    disposeWizardModel(this.model)
   }
 }
