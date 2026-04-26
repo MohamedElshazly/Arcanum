@@ -58,3 +58,21 @@ describe('disposeWizardModel', () => {
     for (const s of matSpies) expect(s).toHaveBeenCalledOnce()
   })
 })
+
+import { getEnemyModelConfig } from '../src/visuals/EnemyModelConfig'
+
+describe('getEnemyModelConfig', () => {
+  it('returns distinct configs for each archetype', () => {
+    const a = getEnemyModelConfig('apprentice', 0xcc4400)
+    const b = getEnemyModelConfig('battle_mage', 0xcc4400)
+    const w = getEnemyModelConfig('warlock', 0xcc4400)
+    expect(a.height).toBeLessThan(b.height)
+    expect(w.hatColor).not.toBe(a.hatColor)
+  })
+
+  it('returns boss-variant config when variant supplied', () => {
+    const cfg = getEnemyModelConfig('boss', 0x000000, 'inferno_titan')
+    expect(cfg.height).toBeGreaterThanOrEqual(2.5)
+    expect(cfg.bodyColor).toBe(0x441100)
+  })
+})
