@@ -8,6 +8,7 @@ import { SpellBar }      from '../spells/SpellBar'
 import { HUD }           from '../ui/HUD'
 import { DungeonSession } from '../dungeon/DungeonSession'
 import { LoadoutScreen } from '../ui/LoadoutScreen'
+import { TitleScreen }   from '../ui/TitleScreen'
 
 import { EvolutionOverlay } from '../ui/EvolutionOverlay'
 import { RunSummaryScreen } from '../ui/RunSummaryScreen'
@@ -69,6 +70,7 @@ export class Game {
   private difficulty:   DifficultySystem
 
   // UI
+  private titleScreen:      TitleScreen | null = null
   private loadoutScreen:    LoadoutScreen | null = null
   private runSummaryScreen: RunSummaryScreen | null = null
   private evolutionOverlay: EvolutionOverlay
@@ -111,7 +113,32 @@ export class Game {
     this.grimoire.load()
     this.hud.init()
     this.sceneManager.scene.add(this.player.mesh)
-    this.showLoadoutScreen()
+    this.showTitleScreen()
+  }
+
+  // ── TitleScreen ────────────────────────────────────────────────────────────
+
+  private showTitleScreen(): void {
+    this.titleScreen = new TitleScreen({
+      root: document.getElementById('title-root') as HTMLElement,
+      onBegin: () => {
+        this.initAudioOnce()
+        if (this.titleScreen) { this.titleScreen.dispose(); this.titleScreen = null }
+        this.showLoadoutScreen()
+      },
+    })
+    this.titleScreen.show()
+  }
+
+  /** Eager-preload SFX + all music + unlock audio context. Idempotent. */
+  private initAudioOnce(): void {
+    if (this.audioInitialized) return
+    this.audioInitialized = true
+    void (async () => {
+      await this.audio.sfx.preloadAll()
+      await this.audio.music.preload(['stone', 'fire', 'ice', 'lightning', 'arcane', 'void', 'boss'])
+      await this.audio.music.unlock()
+    })()
   }
 
   // ── LoadoutScreen ──────────────────────────────────────────────────────────
@@ -136,15 +163,9 @@ export class Game {
   // ── Start run ─────────────────────────────────────────────────────────────
 
   private startRun(): void {
-    // Audio: preload SFX + boss + the initial biome on first run; unlock context on user gesture.
-    if (!this.audioInitialized) {
-      this.audioInitialized = true
-      void (async () => {
-        await this.audio.sfx.preloadAll()
-        await this.audio.music.preload(['boss'])
-        await this.audio.music.unlock()
-      })()
-    }
+    // Audio is preloaded + unlocked when the title screen's BEGIN button fires.
+    // This is a defensive fallback in case startRun is reached without going through it.
+    this.initAudioOnce()
 
     if (this.loadoutScreen) { this.loadoutScreen.dispose(); this.loadoutScreen = null }
 
