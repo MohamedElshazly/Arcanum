@@ -17,6 +17,7 @@ import { MasterySystem }    from '../progression/MasterySystem'
 import { Grimoire }         from '../progression/Grimoire'
 import { RunData }          from '../progression/RunData'
 import { DifficultySystem } from '../progression/DifficultySystem'
+import { createAudio, type Audio } from '../audio'
 import {
   IEffect,
   castBlink,
@@ -71,6 +72,10 @@ export class Game {
   private loadoutScreen:    LoadoutScreen | null = null
   private runSummaryScreen: RunSummaryScreen | null = null
   private evolutionOverlay: EvolutionOverlay
+
+  // Audio
+  readonly audio: Audio = createAudio()
+  private audioInitialized = false
 
   // Run state
   private running  = false
@@ -128,6 +133,16 @@ export class Game {
   // ── Start run ─────────────────────────────────────────────────────────────
 
   private startRun(): void {
+    // Audio: preload SFX + boss + the initial biome on first run; unlock context on user gesture.
+    if (!this.audioInitialized) {
+      this.audioInitialized = true
+      void (async () => {
+        await this.audio.sfx.preloadAll()
+        await this.audio.music.preload(['boss'])
+        await this.audio.music.unlock()
+      })()
+    }
+
     if (this.loadoutScreen) { this.loadoutScreen.dispose(); this.loadoutScreen = null }
 
     this.spellBar.loadFromLoadout(this.inventory.activeLoadout)
@@ -189,6 +204,9 @@ export class Game {
 
     const delta       = Math.min(this.clock.getDelta(), DELTA_CAP)
     const currentTime = this.clock.getElapsedTime()
+
+    // Tick audio fades regardless of game-state branches.
+    this.audio.music.update(delta)
 
     // Death animation — skip all gameplay, just animate and render
     if (this.player.isDying) {
@@ -324,6 +342,7 @@ export class Game {
     // Death condition
     if (this.player.hp <= 0 && !this.player.isDying) {
       this.player.startDying()
+      this.audio.music.stopWithSilence(0.3)
     }
   }
 
