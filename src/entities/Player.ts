@@ -246,7 +246,7 @@ export class Player {
         opacity:           0.3,
       })
       this.shieldMesh = new THREE.Mesh(geo, mat)
-      this.shieldMesh.position.set(0, 0, 0)
+      this.shieldMesh.position.set(0, 0.75, 0)
       this.mesh.add(this.shieldMesh)
     }
   }
