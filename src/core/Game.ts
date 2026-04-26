@@ -17,6 +17,7 @@ import { MasterySystem }    from '../progression/MasterySystem'
 import { Grimoire }         from '../progression/Grimoire'
 import { RunData }          from '../progression/RunData'
 import { DifficultySystem } from '../progression/DifficultySystem'
+import { createAudio, type Audio } from '../audio'
 import {
   IEffect,
   castBlink,
@@ -72,6 +73,10 @@ export class Game {
   private runSummaryScreen: RunSummaryScreen | null = null
   private evolutionOverlay: EvolutionOverlay
 
+  // Audio
+  readonly audio: Audio = createAudio()
+  private audioInitialized = false
+
   // Run state
   private running  = false
   private rafId    = 0
@@ -82,6 +87,7 @@ export class Game {
     this.inputManager = new InputManager()
     this.player       = new Player()
     this.session      = new DungeonSession()
+    this.session.setMusicManager(this.audio.music)
 
     this.inventory  = new PlayerInventory()
     this.mastery    = new MasterySystem()
@@ -91,6 +97,7 @@ export class Game {
 
     this.spellBar    = new SpellBar()
     this.spellCaster = new SpellCaster(this.player, this.mastery, this.grimoire)
+    this.spellCaster.setSfx(this.audio.sfx)
     this.hud         = new HUD()
 
     this.evolutionOverlay = new EvolutionOverlay(
@@ -120,6 +127,7 @@ export class Game {
       mastery:        this.mastery,
       grimoire:       this.grimoire,
       difficulty:     this.difficulty,
+      audio:          this.audio,
       onEnterDungeon: () => this.startRun(),
     })
     this.loadoutScreen.show()
@@ -128,6 +136,16 @@ export class Game {
   // ── Start run ─────────────────────────────────────────────────────────────
 
   private startRun(): void {
+    // Audio: preload SFX + boss + the initial biome on first run; unlock context on user gesture.
+    if (!this.audioInitialized) {
+      this.audioInitialized = true
+      void (async () => {
+        await this.audio.sfx.preloadAll()
+        await this.audio.music.preload(['boss'])
+        await this.audio.music.unlock()
+      })()
+    }
+
     if (this.loadoutScreen) { this.loadoutScreen.dispose(); this.loadoutScreen = null }
 
     this.spellBar.loadFromLoadout(this.inventory.activeLoadout)
@@ -189,6 +207,9 @@ export class Game {
 
     const delta       = Math.min(this.clock.getDelta(), DELTA_CAP)
     const currentTime = this.clock.getElapsedTime()
+
+    // Tick audio fades regardless of game-state branches.
+    this.audio.music.update(delta)
 
     // Death animation — skip all gameplay, just animate and render
     if (this.player.isDying) {
@@ -324,6 +345,8 @@ export class Game {
     // Death condition
     if (this.player.hp <= 0 && !this.player.isDying) {
       this.player.startDying()
+      this.audio.music.stopWithSilence(0.3)
+      this.session.cancelBossMusicTimer()
     }
   }
 
@@ -382,6 +405,7 @@ export class Game {
       inventory: this.inventory,
       booksCollected: this.runData.collectedBooks.length,
       maxPicks: 3,
+      audio: this.audio,
       onConfirm: (result) => {
         if (result.claimedSpells) {
           for (const spellId of result.claimedSpells) {
@@ -535,7 +559,7 @@ export class Game {
             const to   = nextTarget.position.clone()
             this.activeEffects.push(new LightningBoltEffect(from, to, this.sceneManager.scene))
             const jumpDir = new THREE.Vector3().subVectors(to, from).setY(0).normalize()
-            const jumpProj = new Projectile(from.setY(0.75), jumpDir, proj.spell, this.sceneManager.scene, proj.jumpsRemaining - 1)
+            const jumpProj = new Projectile(from.setY(0.75), jumpDir, proj.spell, this.sceneManager.scene, proj.jumpsRemaining - 1, this.audio.sfx)
             this.projectiles.push(jumpProj)
           }
         }

@@ -18,6 +18,8 @@ import type { DifficultyMultipliers } from '../progression/DifficultySystem'
 import type { DifficultyStatMultipliers } from '../entities/Enemy'
 import type { Player }        from '../entities/Player'
 import type { SceneManager }  from '../core/SceneManager'
+import type { MusicManager }  from '../audio/MusicManager'
+import type { TrackId }       from '../audio/manifest'
 import { PLAYER_RADIUS }      from '../constants'
 
 type TransitionState = 'idle' | 'fade-out' | 'fade-in'
@@ -46,6 +48,21 @@ export class DungeonSession {
 
   /** Called when a spellbook orb is collected by the player. */
   onOrbCollected: ((spellIds: string[]) => void) | null = null
+
+  private music: MusicManager | null = null
+  private bossMusicTimer: ReturnType<typeof setTimeout> | null = null
+
+  setMusicManager(music: MusicManager): void {
+    this.music = music
+  }
+
+  /** Cancel any pending boss-music timer. Call when silencing music or resetting the run. */
+  cancelBossMusicTimer(): void {
+    if (this.bossMusicTimer !== null) {
+      clearTimeout(this.bossMusicTimer)
+      this.bossMusicTimer = null
+    }
+  }
 
   init(scene: THREE.Scene, sm: SceneManager, seed: number, diffMultipliers?: DifficultyMultipliers): void {
     this.sm       = sm
@@ -94,6 +111,15 @@ export class DungeonSession {
           this.fadeTimer = 0
           if (!this.activeRoomData.visited) {
             this.showBiomeDescription(this.activeRoomData)
+            if (this.activeRoomData.type === 'boss' && this.music) {
+              void this.music.preload(['boss'])
+              this.music.stopWithSilence(0.5)
+              if (this.bossMusicTimer !== null) clearTimeout(this.bossMusicTimer)
+              this.bossMusicTimer = setTimeout(() => {
+                this.bossMusicTimer = null
+                this.music?.play('boss')
+              }, 900)
+            }
           }
           this.activeRoomData.visited = true
         }
@@ -107,6 +133,7 @@ export class DungeonSession {
     this.transitionState = 'idle'
     this.fadeTimer       = 0
     this.pendingDir      = null
+    this.cancelBossMusicTimer()
     this.setOverlayOpacity(0)
   }
 
@@ -180,7 +207,12 @@ export class DungeonSession {
       scene,
     )
     this.orbs.push(orb)
+    const wasBossFight = this.enemies.some(e => e.isBoss)
+    const stillBossAlive = this.enemies.some(e => e.alive && e.isBoss)
     this.onEnemyDied?.()
+    if (wasBossFight && !stillBossAlive && this.music && this.activeRoomData) {
+      this.music.crossfadeTo(this.activeRoomData.biome as TrackId, 1.5)
+    }
   }
 
   private commitTransition(player: Player, scene: THREE.Scene): void {
@@ -189,6 +221,7 @@ export class DungeonSession {
     const nextData = getNeighborRoom(this.dungeon.grid, this.activeRoomData, dir)
     if (!nextData) return
 
+    this.cancelBossMusicTimer()
     this.clearRoom(scene)
     this.activateRoom(nextData, scene, OPPOSITE_DIR[dir])
 
@@ -253,6 +286,10 @@ export class DungeonSession {
   }
 
   private showBiomeDescription(room: RoomData): void {
+    if (this.music && room.type !== 'boss') {
+      void this.music.preload([room.biome as TrackId])
+      this.music.crossfadeTo(room.biome as TrackId, 1.5)
+    }
     const biome = BIOMES[room.biome]
     const el    = document.getElementById('biome-desc')
     if (!el) return

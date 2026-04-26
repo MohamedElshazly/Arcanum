@@ -4,6 +4,7 @@ import type { PlayerInventory } from '../progression/PlayerInventory'
 import type { MasterySystem }   from '../progression/MasterySystem'
 import type { Grimoire }        from '../progression/Grimoire'
 import type { DifficultySystem } from '../progression/DifficultySystem'
+import type { Audio }            from '../audio'
 
 export interface LoadoutScreenConfig {
   root:           HTMLDivElement
@@ -11,6 +12,7 @@ export interface LoadoutScreenConfig {
   mastery:        MasterySystem
   grimoire:       Grimoire
   difficulty:     DifficultySystem
+  audio?:         Audio
   onEnterDungeon: () => void
 }
 
@@ -76,6 +78,7 @@ export class LoadoutScreen {
       inventory: this.config.inventory,
       mastery: this.config.mastery,
       grimoire: this.config.grimoire,
+      audio: this.config.audio,
       onConfirm: () => this.config.onEnterDungeon(),
     })
     this.spellbook.show()

@@ -3,6 +3,7 @@ import { Spell }          from '../spells/SpellDefinitions'
 import { TrailSystem }    from '../fx/TrailSystem'
 import type { RoomBounds, Obstacle } from '../dungeon/Room'
 import { isOutOfBounds }  from '../utils/CollisionUtils'
+import type { SfxManager } from '../audio/SfxManager'
 
 export class Projectile {
   readonly mesh:  THREE.Mesh
@@ -34,6 +35,7 @@ export class Projectile {
     spell:          Spell,
     scene:          THREE.Scene,
     jumpsRemaining  = 0,
+    private readonly sfx?: SfxManager,
   ) {
     this.origin         = origin.clone()
     this.spell          = spell
@@ -136,6 +138,7 @@ export class Projectile {
 
   destroy(scene: THREE.Scene): void {
     if (!this.alive) return
+    this.sfx?.play(this.spell.element, 'impact')
     this.alive = false
     scene.remove(this.mesh)
     scene.remove(this.light)

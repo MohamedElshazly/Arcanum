@@ -1,0 +1,18 @@
+// Stone biome — "Ancient stone corridors, cold and silent."
+// Sparse, reverby, low-mid tones. BPM 72.
+
+setcps(72 / 60 / 4)
+
+stack(
+  // Distant church bell — sparse, every 4 cycles
+  s("bell").gain(0.3).room(0.9).delay(0.4).struct("1 ~ ~ ~ ~ ~ ~ ~"),
+
+  // Slow heartbeat pulse
+  s("bd:2").gain(0.4).lpf(200).struct("1 ~ ~ ~ 1 ~ ~ ~"),
+
+  // Distant choir pad
+  note("<c2 g1 ab1 eb2>").s("gm_choir_aahs").gain(0.25).room(0.85).attack(0.5).release(2),
+
+  // Sparse high tone — feels like wind
+  note("<c5 ~ ~ eb5>").s("gm_celesta").gain(0.15).room(0.8).delay(0.6).slow(2)
+)
