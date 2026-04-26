@@ -87,6 +87,7 @@ export class Game {
     this.inputManager = new InputManager()
     this.player       = new Player()
     this.session      = new DungeonSession()
+    this.session.setMusicManager(this.audio.music)
 
     this.inventory  = new PlayerInventory()
     this.mastery    = new MasterySystem()
