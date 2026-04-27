@@ -9,7 +9,7 @@ import { HUD }           from '../ui/HUD'
 import { DungeonSession } from '../dungeon/DungeonSession'
 import { LoadoutScreen } from '../ui/LoadoutScreen'
 import { TitleScreen }   from '../ui/TitleScreen'
-import { initPortals, updatePortals, arrivedViaPortal } from '../portal/VibeJamPortals'
+import { initPortals, updatePortals, arrivedViaPortal, triggerExitRedirect } from '../portal/VibeJamPortals'
 
 import { EvolutionOverlay } from '../ui/EvolutionOverlay'
 import { RunSummaryScreen } from '../ui/RunSummaryScreen'
@@ -118,6 +118,11 @@ export class Game {
     this.grimoire.load()
     this.hud.init()
     this.sceneManager.scene.add(this.player.mesh)
+
+    // Vibe Jam HUD shortcut — click the small portal under the minimap
+    // to leave to a random other jam game without walking back to start room.
+    document.getElementById('vibe-jam-portal-btn')
+      ?.addEventListener('click', () => triggerExitRedirect())
     // Start downloading audio immediately — by the time the user finishes
     // reading the title screen the bytes are already on disk.
     this.beginAudioPreload()

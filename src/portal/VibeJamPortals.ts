@@ -145,6 +145,12 @@ function redirectToExit(): void {
   window.location.href = 'https://vibej.am/portal/2026?' + params.toString()
 }
 
+/** Trigger the exit-portal redirect from a UI element (e.g. the HUD button). */
+export function triggerExitRedirect(): void {
+  if (redirected) return
+  redirectToExit()
+}
+
 function redirectBack(): void {
   const params = new URLSearchParams(window.location.search)
   const ref = params.get('ref')
