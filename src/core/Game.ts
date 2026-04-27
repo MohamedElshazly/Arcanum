@@ -9,7 +9,7 @@ import { HUD }           from '../ui/HUD'
 import { DungeonSession } from '../dungeon/DungeonSession'
 import { LoadoutScreen } from '../ui/LoadoutScreen'
 import { TitleScreen }   from '../ui/TitleScreen'
-import { initPortals, animatePortals, arrivedViaPortal } from '../portal/VibeJamPortals'
+import { initPortals, updatePortals, arrivedViaPortal } from '../portal/VibeJamPortals'
 
 import { EvolutionOverlay } from '../ui/EvolutionOverlay'
 import { RunSummaryScreen } from '../ui/RunSummaryScreen'
@@ -238,17 +238,17 @@ export class Game {
     this.activeEffects = []
     this.lastRoomCleared = false
 
-    // Vibe Jam 2026 portals — green exit portal beside the player, plus a red
-    // start portal at spawn if the player arrived via ?portal=true. Walking
-    // into them triggers a window.location redirect.
+    // Vibe Jam 2026 portals — green exit portal in the start room, plus a red
+    // start portal at spawn if the player arrived via ?portal=true. We render
+    // them only while the player is in the start room (toggled in the loop).
     if (!this.portalsInitialized) {
       this.portalsInitialized = true
       initPortals({
         scene:        this.sceneManager.scene,
-        getPlayer:    () => this.player.mesh,
         spawnPoint:   { x:  0, y: 0.4, z: 0 },
         exitPosition: { x:  6, y: 0.4, z: -2 },
         exitLabel:    'VIBE JAM PORTAL',
+        triggerRadius: 1.2,
       })
     }
 
@@ -271,7 +271,10 @@ export class Game {
     this.audio.music.update(delta)
 
     // Tick Vibe Jam portal particles + collision check.
-    animatePortals()
+    // Only active in the start room; everywhere else the portals are hidden
+    // and the proximity trigger is skipped.
+    const inStartRoom = this.session.currentRoomData?.type === 'start'
+    updatePortals(this.player.position, inStartRoom)
 
     // Death animation — skip all gameplay, just animate and render
     if (this.player.isDying) {
